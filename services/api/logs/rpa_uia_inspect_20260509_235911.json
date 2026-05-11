@@ -1,0 +1,1682 @@
+{
+  "window": "FMbil_BDD Recovered",
+  "fields": [
+    {
+      "controlType": "EditControl",
+      "name": "",
+      "automationId": "Field: Libro_Venta_mes::RazonSocialCliente",
+      "className": "class FieldTextView",
+      "rect": {
+        "left": 70,
+        "top": 231,
+        "right": 424,
+        "bottom": 252
+      },
+      "value": "Sin Nombre"
+    },
+    {
+      "controlType": "EditControl",
+      "name": "",
+      "automationId": "Field: Libro_Venta_mes::fechacreacion",
+      "className": "class FieldTextView",
+      "rect": {
+        "left": 1044,
+        "top": 169,
+        "right": 1183,
+        "bottom": 187
+      },
+      "value": "2/12/2022"
+    },
+    {
+      "controlType": "EditControl",
+      "name": "",
+      "automationId": "Field: Libro_Venta_mes::tipo_comprobnte",
+      "className": "class FieldTextView",
+      "rect": {
+        "left": 1212,
+        "top": 170,
+        "right": 1322,
+        "bottom": 188
+      },
+      "value": "Nota de entrega"
+    },
+    {
+      "controlType": "EditControl",
+      "name": "Encargado de Venta:",
+      "automationId": "Field: Libro_Venta_mes::Encargado_venta",
+      "className": "class FieldTextView",
+      "rect": {
+        "left": 1046,
+        "top": 431,
+        "right": 1185,
+        "bottom": 449
+      },
+      "value": "Julio"
+    },
+    {
+      "controlType": "EditControl",
+      "name": "Venta a(l):",
+      "automationId": "Field: Libro_Venta_mes::Tipo_venta",
+      "className": "class FieldTextView",
+      "rect": {
+        "left": 1212,
+        "top": 217,
+        "right": 1322,
+        "bottom": 239
+      },
+      "value": "Contado"
+    },
+    {
+      "controlType": "ComboBoxControl",
+      "name": "Ubicación del Comprobante:",
+      "automationId": "Field: Libro_Venta_mes::Ubicacion",
+      "className": "class FieldTextView",
+      "rect": {
+        "left": 1044,
+        "top": 116,
+        "right": 1241,
+        "bottom": 134
+      },
+      "value": "Ubicación del Comprobante:"
+    },
+    {
+      "controlType": "EditControl",
+      "name": "",
+      "automationId": "Field: Libro_Venta_mes::debito Fiscal",
+      "className": "class FieldTextView",
+      "rect": {
+        "left": 1212,
+        "top": 264,
+        "right": 1322,
+        "bottom": 282
+      },
+      "value": "0,00"
+    },
+    {
+      "controlType": "EditControl",
+      "name": "Código de Control",
+      "automationId": "Field: Libro_Venta_mes::CodigoControl",
+      "className": "class FieldTextView",
+      "rect": {
+        "left": 1046,
+        "top": 387,
+        "right": 1185,
+        "bottom": 405
+      },
+      "value": "Código de Control"
+    },
+    {
+      "controlType": "EditControl",
+      "name": "Observaciones",
+      "automationId": "Field: Libro_Venta_mes::Observaciones",
+      "className": "class FieldTextView",
+      "rect": {
+        "left": 1044,
+        "top": 467,
+        "right": 1317,
+        "bottom": 626
+      },
+      "value": "Observaciones"
+    },
+    {
+      "controlType": "EditControl",
+      "name": "",
+      "automationId": "Field: Libro_Venta_mes::Utilidad",
+      "className": "class FieldTextView",
+      "rect": {
+        "left": 1212,
+        "top": 304,
+        "right": 1322,
+        "bottom": 322
+      },
+      "value": "581,46"
+    },
+    {
+      "controlType": "EditControl",
+      "name": "",
+      "automationId": "Field: Entrada_salida::Salida",
+      "className": "class FieldTextView",
+      "rect": {
+        "left": 16,
+        "top": 681,
+        "right": 69,
+        "bottom": 700
+      },
+      "value": "100"
+    },
+    {
+      "controlType": "EditControl",
+      "name": "",
+      "automationId": "Field: producto::Articulo",
+      "className": "class FieldTextView",
+      "rect": {
+        "left": 72,
+        "top": 675,
+        "right": 488,
+        "bottom": 704
+      },
+      "value": "DVD 4,7GB YOMICO NORMAL Pza."
+    },
+    {
+      "controlType": "EditControl",
+      "name": "",
+      "automationId": "Field: Entrada_salida::PrecioProd",
+      "className": "class FieldTextView",
+      "rect": {
+        "left": 493,
+        "top": 679,
+        "right": 568,
+        "bottom": 698
+      },
+      "value": "1,00"
+    },
+    {
+      "controlType": "EditControl",
+      "name": "",
+      "automationId": "Field: Entrada_salida::CostoProd",
+      "className": "class FieldTextView",
+      "rect": {
+        "left": 648,
+        "top": 679,
+        "right": 717,
+        "bottom": 698
+      },
+      "value": "0,77"
+    },
+    {
+      "controlType": "EditControl",
+      "name": "",
+      "automationId": "Field: Entrada_salida::SubtotalUtilidad",
+      "className": "class FieldTextView",
+      "rect": {
+        "left": 789,
+        "top": 680,
+        "right": 853,
+        "bottom": 700
+      },
+      "value": "23,00"
+    },
+    {
+      "controlType": "EditControl",
+      "name": "",
+      "automationId": "Field: Entrada_salida::Utilidad",
+      "className": "class FieldTextView",
+      "rect": {
+        "left": 721,
+        "top": 680,
+        "right": 781,
+        "bottom": 700
+      },
+      "value": "0,23"
+    },
+    {
+      "controlType": "EditControl",
+      "name": "",
+      "automationId": "Field: Entrada_salida::Subtotal",
+      "className": "class FieldTextView",
+      "rect": {
+        "left": 571,
+        "top": 680,
+        "right": 646,
+        "bottom": 698
+      },
+      "value": "100,00"
+    },
+    {
+      "controlType": "EditControl",
+      "name": "",
+      "automationId": "Field: Entrada_salida::Descto",
+      "className": "class FieldTextView",
+      "rect": {
+        "left": 860,
+        "top": 681,
+        "right": 921,
+        "bottom": 700
+      },
+      "value": ""
+    },
+    {
+      "controlType": "EditControl",
+      "name": "",
+      "automationId": "Field: Entrada_salida::TotalDescto",
+      "className": "class FieldTextView",
+      "rect": {
+        "left": 927,
+        "top": 681,
+        "right": 988,
+        "bottom": 700
+      },
+      "value": ""
+    },
+    {
+      "controlType": "EditControl",
+      "name": "",
+      "automationId": "Field: Entrada_salida::Salida",
+      "className": "class FieldTextView",
+      "rect": {
+        "left": 16,
+        "top": 329,
+        "right": 69,
+        "bottom": 348
+      },
+      "value": "2"
+    },
+    {
+      "controlType": "EditControl",
+      "name": "",
+      "automationId": "Field: producto::Articulo",
+      "className": "class FieldTextView",
+      "rect": {
+        "left": 72,
+        "top": 323,
+        "right": 488,
+        "bottom": 352
+      },
+      "value": "Tapas Dvd MAZA 7MM 2 DISCOS DVD Pza."
+    },
+    {
+      "controlType": "EditControl",
+      "name": "",
+      "automationId": "Field: Entrada_salida::PrecioProd",
+      "className": "class FieldTextView",
+      "rect": {
+        "left": 493,
+        "top": 327,
+        "right": 568,
+        "bottom": 346
+      },
+      "value": "1,00"
+    },
+    {
+      "controlType": "EditControl",
+      "name": "",
+      "automationId": "Field: Entrada_salida::CostoProd",
+      "className": "class FieldTextView",
+      "rect": {
+        "left": 648,
+        "top": 327,
+        "right": 717,
+        "bottom": 346
+      },
+      "value": "0,73"
+    },
+    {
+      "controlType": "EditControl",
+      "name": "",
+      "automationId": "Field: Entrada_salida::SubtotalUtilidad",
+      "className": "class FieldTextView",
+      "rect": {
+        "left": 789,
+        "top": 328,
+        "right": 853,
+        "bottom": 348
+      },
+      "value": "0,54"
+    },
+    {
+      "controlType": "EditControl",
+      "name": "",
+      "automationId": "Field: Entrada_salida::Utilidad",
+      "className": "class FieldTextView",
+      "rect": {
+        "left": 721,
+        "top": 328,
+        "right": 781,
+        "bottom": 348
+      },
+      "value": "0,27"
+    },
+    {
+      "controlType": "EditControl",
+      "name": "",
+      "automationId": "Field: Entrada_salida::Subtotal",
+      "className": "class FieldTextView",
+      "rect": {
+        "left": 571,
+        "top": 328,
+        "right": 646,
+        "bottom": 346
+      },
+      "value": "2,00"
+    },
+    {
+      "controlType": "EditControl",
+      "name": "",
+      "automationId": "Field: Entrada_salida::Descto",
+      "className": "class FieldTextView",
+      "rect": {
+        "left": 860,
+        "top": 329,
+        "right": 921,
+        "bottom": 348
+      },
+      "value": ""
+    },
+    {
+      "controlType": "EditControl",
+      "name": "",
+      "automationId": "Field: Entrada_salida::TotalDescto",
+      "className": "class FieldTextView",
+      "rect": {
+        "left": 927,
+        "top": 329,
+        "right": 988,
+        "bottom": 348
+      },
+      "value": ""
+    },
+    {
+      "controlType": "EditControl",
+      "name": "",
+      "automationId": "Field: Entrada_salida::Salida",
+      "className": "class FieldTextView",
+      "rect": {
+        "left": 16,
+        "top": 361,
+        "right": 69,
+        "bottom": 380
+      },
+      "value": "1"
+    },
+    {
+      "controlType": "EditControl",
+      "name": "",
+      "automationId": "Field: producto::Articulo",
+      "className": "class FieldTextView",
+      "rect": {
+        "left": 72,
+        "top": 355,
+        "right": 488,
+        "bottom": 384
+      },
+      "value": "Telefono Panasonic simple TS500 Pza."
+    },
+    {
+      "controlType": "EditControl",
+      "name": "",
+      "automationId": "Field: Entrada_salida::PrecioProd",
+      "className": "class FieldTextView",
+      "rect": {
+        "left": 493,
+        "top": 359,
+        "right": 568,
+        "bottom": 378
+      },
+      "value": "140,00"
+    },
+    {
+      "controlType": "EditControl",
+      "name": "",
+      "automationId": "Field: Entrada_salida::CostoProd",
+      "className": "class FieldTextView",
+      "rect": {
+        "left": 648,
+        "top": 359,
+        "right": 717,
+        "bottom": 378
+      },
+      "value": "100,00"
+    },
+    {
+      "controlType": "EditControl",
+      "name": "",
+      "automationId": "Field: Entrada_salida::SubtotalUtilidad",
+      "className": "class FieldTextView",
+      "rect": {
+        "left": 789,
+        "top": 360,
+        "right": 853,
+        "bottom": 380
+      },
+      "value": "40,00"
+    },
+    {
+      "controlType": "EditControl",
+      "name": "",
+      "automationId": "Field: Entrada_salida::Utilidad",
+      "className": "class FieldTextView",
+      "rect": {
+        "left": 721,
+        "top": 360,
+        "right": 781,
+        "bottom": 380
+      },
+      "value": "40,00"
+    },
+    {
+      "controlType": "EditControl",
+      "name": "",
+      "automationId": "Field: Entrada_salida::Subtotal",
+      "className": "class FieldTextView",
+      "rect": {
+        "left": 571,
+        "top": 360,
+        "right": 646,
+        "bottom": 378
+      },
+      "value": "140,00"
+    },
+    {
+      "controlType": "EditControl",
+      "name": "",
+      "automationId": "Field: Entrada_salida::Descto",
+      "className": "class FieldTextView",
+      "rect": {
+        "left": 860,
+        "top": 361,
+        "right": 921,
+        "bottom": 380
+      },
+      "value": ""
+    },
+    {
+      "controlType": "EditControl",
+      "name": "",
+      "automationId": "Field: Entrada_salida::TotalDescto",
+      "className": "class FieldTextView",
+      "rect": {
+        "left": 927,
+        "top": 361,
+        "right": 988,
+        "bottom": 380
+      },
+      "value": ""
+    },
+    {
+      "controlType": "EditControl",
+      "name": "",
+      "automationId": "Field: Entrada_salida::Salida",
+      "className": "class FieldTextView",
+      "rect": {
+        "left": 16,
+        "top": 393,
+        "right": 69,
+        "bottom": 412
+      },
+      "value": "1"
+    },
+    {
+      "controlType": "EditControl",
+      "name": "",
+      "automationId": "Field: producto::Articulo",
+      "className": "class FieldTextView",
+      "rect": {
+        "left": 72,
+        "top": 387,
+        "right": 488,
+        "bottom": 416
+      },
+      "value": "VITRINA ALUMINIO ECHADA 1.50X1.00 Pza."
+    },
+    {
+      "controlType": "EditControl",
+      "name": "",
+      "automationId": "Field: Entrada_salida::PrecioProd",
+      "className": "class FieldTextView",
+      "rect": {
+        "left": 493,
+        "top": 391,
+        "right": 568,
+        "bottom": 410
+      },
+      "value": "1350,00"
+    },
+    {
+      "controlType": "EditControl",
+      "name": "",
+      "automationId": "Field: Entrada_salida::CostoProd",
+      "className": "class FieldTextView",
+      "rect": {
+        "left": 648,
+        "top": 391,
+        "right": 717,
+        "bottom": 410
+      },
+      "value": "1100,00"
+    },
+    {
+      "controlType": "EditControl",
+      "name": "",
+      "automationId": "Field: Entrada_salida::SubtotalUtilidad",
+      "className": "class FieldTextView",
+      "rect": {
+        "left": 789,
+        "top": 392,
+        "right": 853,
+        "bottom": 412
+      },
+      "value": "250,00"
+    },
+    {
+      "controlType": "EditControl",
+      "name": "",
+      "automationId": "Field: Entrada_salida::Utilidad",
+      "className": "class FieldTextView",
+      "rect": {
+        "left": 721,
+        "top": 392,
+        "right": 781,
+        "bottom": 412
+      },
+      "value": "250,00"
+    },
+    {
+      "controlType": "EditControl",
+      "name": "",
+      "automationId": "Field: Entrada_salida::Subtotal",
+      "className": "class FieldTextView",
+      "rect": {
+        "left": 571,
+        "top": 392,
+        "right": 646,
+        "bottom": 410
+      },
+      "value": "1350,00"
+    },
+    {
+      "controlType": "EditControl",
+      "name": "",
+      "automationId": "Field: Entrada_salida::Descto",
+      "className": "class FieldTextView",
+      "rect": {
+        "left": 860,
+        "top": 393,
+        "right": 921,
+        "bottom": 412
+      },
+      "value": ""
+    },
+    {
+      "controlType": "EditControl",
+      "name": "",
+      "automationId": "Field: Entrada_salida::TotalDescto",
+      "className": "class FieldTextView",
+      "rect": {
+        "left": 927,
+        "top": 393,
+        "right": 988,
+        "bottom": 412
+      },
+      "value": ""
+    },
+    {
+      "controlType": "EditControl",
+      "name": "",
+      "automationId": "Field: Entrada_salida::Salida",
+      "className": "class FieldTextView",
+      "rect": {
+        "left": 16,
+        "top": 425,
+        "right": 69,
+        "bottom": 444
+      },
+      "value": "1"
+    },
+    {
+      "controlType": "EditControl",
+      "name": "",
+      "automationId": "Field: producto::Articulo",
+      "className": "class FieldTextView",
+      "rect": {
+        "left": 72,
+        "top": 419,
+        "right": 488,
+        "bottom": 448
+      },
+      "value": "VITRINA ALUMINIO ECHADA 0.60X1.00 Pza."
+    },
+    {
+      "controlType": "EditControl",
+      "name": "",
+      "automationId": "Field: Entrada_salida::PrecioProd",
+      "className": "class FieldTextView",
+      "rect": {
+        "left": 493,
+        "top": 423,
+        "right": 568,
+        "bottom": 442
+      },
+      "value": "800,00"
+    },
+    {
+      "controlType": "EditControl",
+      "name": "",
+      "automationId": "Field: Entrada_salida::CostoProd",
+      "className": "class FieldTextView",
+      "rect": {
+        "left": 648,
+        "top": 423,
+        "right": 717,
+        "bottom": 442
+      },
+      "value": "550,00"
+    },
+    {
+      "controlType": "EditControl",
+      "name": "",
+      "automationId": "Field: Entrada_salida::SubtotalUtilidad",
+      "className": "class FieldTextView",
+      "rect": {
+        "left": 789,
+        "top": 424,
+        "right": 853,
+        "bottom": 444
+      },
+      "value": "250,00"
+    },
+    {
+      "controlType": "EditControl",
+      "name": "",
+      "automationId": "Field: Entrada_salida::Utilidad",
+      "className": "class FieldTextView",
+      "rect": {
+        "left": 721,
+        "top": 424,
+        "right": 781,
+        "bottom": 444
+      },
+      "value": "250,00"
+    },
+    {
+      "controlType": "EditControl",
+      "name": "",
+      "automationId": "Field: Entrada_salida::Subtotal",
+      "className": "class FieldTextView",
+      "rect": {
+        "left": 571,
+        "top": 424,
+        "right": 646,
+        "bottom": 442
+      },
+      "value": "800,00"
+    },
+    {
+      "controlType": "EditControl",
+      "name": "",
+      "automationId": "Field: Entrada_salida::Descto",
+      "className": "class FieldTextView",
+      "rect": {
+        "left": 860,
+        "top": 425,
+        "right": 921,
+        "bottom": 444
+      },
+      "value": ""
+    },
+    {
+      "controlType": "EditControl",
+      "name": "",
+      "automationId": "Field: Entrada_salida::TotalDescto",
+      "className": "class FieldTextView",
+      "rect": {
+        "left": 927,
+        "top": 425,
+        "right": 988,
+        "bottom": 444
+      },
+      "value": ""
+    },
+    {
+      "controlType": "EditControl",
+      "name": "",
+      "automationId": "Field: Entrada_salida::Salida",
+      "className": "class FieldTextView",
+      "rect": {
+        "left": 16,
+        "top": 457,
+        "right": 69,
+        "bottom": 476
+      },
+      "value": "1"
+    },
+    {
+      "controlType": "EditControl",
+      "name": "",
+      "automationId": "Field: producto::Articulo",
+      "className": "class FieldTextView",
+      "rect": {
+        "left": 72,
+        "top": 451,
+        "right": 488,
+        "bottom": 480
+      },
+      "value": "PAPEL fotografico FANTAC 10x15 BRILLO Pza."
+    },
+    {
+      "controlType": "EditControl",
+      "name": "",
+      "automationId": "Field: Entrada_salida::PrecioProd",
+      "className": "class FieldTextView",
+      "rect": {
+        "left": 493,
+        "top": 455,
+        "right": 568,
+        "bottom": 474
+      },
+      "value": "43,00"
+    },
+    {
+      "controlType": "EditControl",
+      "name": "",
+      "automationId": "Field: Entrada_salida::CostoProd",
+      "className": "class FieldTextView",
+      "rect": {
+        "left": 648,
+        "top": 455,
+        "right": 717,
+        "bottom": 474
+      },
+      "value": "33,00"
+    },
+    {
+      "controlType": "EditControl",
+      "name": "",
+      "automationId": "Field: Entrada_salida::SubtotalUtilidad",
+      "className": "class FieldTextView",
+      "rect": {
+        "left": 789,
+        "top": 456,
+        "right": 853,
+        "bottom": 476
+      },
+      "value": "10,00"
+    },
+    {
+      "controlType": "EditControl",
+      "name": "",
+      "automationId": "Field: Entrada_salida::Utilidad",
+      "className": "class FieldTextView",
+      "rect": {
+        "left": 721,
+        "top": 456,
+        "right": 781,
+        "bottom": 476
+      },
+      "value": "10,00"
+    },
+    {
+      "controlType": "EditControl",
+      "name": "",
+      "automationId": "Field: Entrada_salida::Subtotal",
+      "className": "class FieldTextView",
+      "rect": {
+        "left": 571,
+        "top": 456,
+        "right": 646,
+        "bottom": 474
+      },
+      "value": "43,00"
+    },
+    {
+      "controlType": "EditControl",
+      "name": "",
+      "automationId": "Field: Entrada_salida::Descto",
+      "className": "class FieldTextView",
+      "rect": {
+        "left": 860,
+        "top": 457,
+        "right": 921,
+        "bottom": 476
+      },
+      "value": ""
+    },
+    {
+      "controlType": "EditControl",
+      "name": "",
+      "automationId": "Field: Entrada_salida::TotalDescto",
+      "className": "class FieldTextView",
+      "rect": {
+        "left": 927,
+        "top": 457,
+        "right": 988,
+        "bottom": 476
+      },
+      "value": ""
+    },
+    {
+      "controlType": "EditControl",
+      "name": "",
+      "automationId": "Field: Entrada_salida::Salida",
+      "className": "class FieldTextView",
+      "rect": {
+        "left": 16,
+        "top": 489,
+        "right": 69,
+        "bottom": 508
+      },
+      "value": "4"
+    },
+    {
+      "controlType": "EditControl",
+      "name": "",
+      "automationId": "Field: producto::Articulo",
+      "className": "class FieldTextView",
+      "rect": {
+        "left": 72,
+        "top": 483,
+        "right": 488,
+        "bottom": 512
+      },
+      "value": "PILAS REDONDAS SONY 3V 2016 Pza."
+    },
+    {
+      "controlType": "EditControl",
+      "name": "",
+      "automationId": "Field: Entrada_salida::PrecioProd",
+      "className": "class FieldTextView",
+      "rect": {
+        "left": 493,
+        "top": 487,
+        "right": 568,
+        "bottom": 506
+      },
+      "value": "5,00"
+    },
+    {
+      "controlType": "EditControl",
+      "name": "",
+      "automationId": "Field: Entrada_salida::CostoProd",
+      "className": "class FieldTextView",
+      "rect": {
+        "left": 648,
+        "top": 487,
+        "right": 717,
+        "bottom": 506
+      },
+      "value": "2,50"
+    },
+    {
+      "controlType": "EditControl",
+      "name": "",
+      "automationId": "Field: Entrada_salida::SubtotalUtilidad",
+      "className": "class FieldTextView",
+      "rect": {
+        "left": 789,
+        "top": 488,
+        "right": 853,
+        "bottom": 508
+      },
+      "value": "10,00"
+    },
+    {
+      "controlType": "EditControl",
+      "name": "",
+      "automationId": "Field: Entrada_salida::Utilidad",
+      "className": "class FieldTextView",
+      "rect": {
+        "left": 721,
+        "top": 488,
+        "right": 781,
+        "bottom": 508
+      },
+      "value": "2,50"
+    },
+    {
+      "controlType": "EditControl",
+      "name": "",
+      "automationId": "Field: Entrada_salida::Subtotal",
+      "className": "class FieldTextView",
+      "rect": {
+        "left": 571,
+        "top": 488,
+        "right": 646,
+        "bottom": 506
+      },
+      "value": "20,00"
+    },
+    {
+      "controlType": "EditControl",
+      "name": "",
+      "automationId": "Field: Entrada_salida::Descto",
+      "className": "class FieldTextView",
+      "rect": {
+        "left": 860,
+        "top": 489,
+        "right": 921,
+        "bottom": 508
+      },
+      "value": ""
+    },
+    {
+      "controlType": "EditControl",
+      "name": "",
+      "automationId": "Field: Entrada_salida::TotalDescto",
+      "className": "class FieldTextView",
+      "rect": {
+        "left": 927,
+        "top": 489,
+        "right": 988,
+        "bottom": 508
+      },
+      "value": ""
+    },
+    {
+      "controlType": "EditControl",
+      "name": "",
+      "automationId": "Field: Entrada_salida::Salida",
+      "className": "class FieldTextView",
+      "rect": {
+        "left": 16,
+        "top": 521,
+        "right": 69,
+        "bottom": 540
+      },
+      "value": "1"
+    },
+    {
+      "controlType": "EditControl",
+      "name": "",
+      "automationId": "Field: producto::Articulo",
+      "className": "class FieldTextView",
+      "rect": {
+        "left": 72,
+        "top": 515,
+        "right": 488,
+        "bottom": 544
+      },
+      "value": "Tapas Dvd MAZA 7MM 2 DISCOS DVD Pza."
+    },
+    {
+      "controlType": "EditControl",
+      "name": "",
+      "automationId": "Field: Entrada_salida::PrecioProd",
+      "className": "class FieldTextView",
+      "rect": {
+        "left": 493,
+        "top": 519,
+        "right": 568,
+        "bottom": 538
+      },
+      "value": "1,00"
+    },
+    {
+      "controlType": "EditControl",
+      "name": "",
+      "automationId": "Field: Entrada_salida::CostoProd",
+      "className": "class FieldTextView",
+      "rect": {
+        "left": 648,
+        "top": 519,
+        "right": 717,
+        "bottom": 538
+      },
+      "value": "0,73"
+    },
+    {
+      "controlType": "EditControl",
+      "name": "",
+      "automationId": "Field: Entrada_salida::SubtotalUtilidad",
+      "className": "class FieldTextView",
+      "rect": {
+        "left": 789,
+        "top": 520,
+        "right": 853,
+        "bottom": 540
+      },
+      "value": "0,27"
+    },
+    {
+      "controlType": "EditControl",
+      "name": "",
+      "automationId": "Field: Entrada_salida::Utilidad",
+      "className": "class FieldTextView",
+      "rect": {
+        "left": 721,
+        "top": 520,
+        "right": 781,
+        "bottom": 540
+      },
+      "value": "0,27"
+    },
+    {
+      "controlType": "EditControl",
+      "name": "",
+      "automationId": "Field: Entrada_salida::Subtotal",
+      "className": "class FieldTextView",
+      "rect": {
+        "left": 571,
+        "top": 520,
+        "right": 646,
+        "bottom": 538
+      },
+      "value": "1,00"
+    },
+    {
+      "controlType": "EditControl",
+      "name": "",
+      "automationId": "Field: Entrada_salida::Descto",
+      "className": "class FieldTextView",
+      "rect": {
+        "left": 860,
+        "top": 521,
+        "right": 921,
+        "bottom": 540
+      },
+      "value": ""
+    },
+    {
+      "controlType": "EditControl",
+      "name": "",
+      "automationId": "Field: Entrada_salida::TotalDescto",
+      "className": "class FieldTextView",
+      "rect": {
+        "left": 927,
+        "top": 521,
+        "right": 988,
+        "bottom": 540
+      },
+      "value": ""
+    },
+    {
+      "controlType": "EditControl",
+      "name": "",
+      "automationId": "Field: Entrada_salida::Salida",
+      "className": "class FieldTextView",
+      "rect": {
+        "left": 16,
+        "top": 553,
+        "right": 69,
+        "bottom": 572
+      },
+      "value": "5"
+    },
+    {
+      "controlType": "EditControl",
+      "name": "",
+      "automationId": "Field: producto::Articulo",
+      "className": "class FieldTextView",
+      "rect": {
+        "left": 72,
+        "top": 547,
+        "right": 488,
+        "bottom": 576
+      },
+      "value": "CHIP NEGRA EPSON Pza."
+    },
+    {
+      "controlType": "EditControl",
+      "name": "",
+      "automationId": "Field: Entrada_salida::PrecioProd",
+      "className": "class FieldTextView",
+      "rect": {
+        "left": 493,
+        "top": 551,
+        "right": 568,
+        "bottom": 570
+      },
+      "value": "40,00"
+    },
+    {
+      "controlType": "EditControl",
+      "name": "",
+      "automationId": "Field: Entrada_salida::CostoProd",
+      "className": "class FieldTextView",
+      "rect": {
+        "left": 648,
+        "top": 551,
+        "right": 717,
+        "bottom": 570
+      },
+      "value": "30,20"
+    },
+    {
+      "controlType": "EditControl",
+      "name": "",
+      "automationId": "Field: Entrada_salida::SubtotalUtilidad",
+      "className": "class FieldTextView",
+      "rect": {
+        "left": 789,
+        "top": 552,
+        "right": 853,
+        "bottom": 572
+      },
+      "value": "49,00"
+    },
+    {
+      "controlType": "EditControl",
+      "name": "",
+      "automationId": "Field: Entrada_salida::Utilidad",
+      "className": "class FieldTextView",
+      "rect": {
+        "left": 721,
+        "top": 552,
+        "right": 781,
+        "bottom": 572
+      },
+      "value": "9,80"
+    },
+    {
+      "controlType": "EditControl",
+      "name": "",
+      "automationId": "Field: Entrada_salida::Subtotal",
+      "className": "class FieldTextView",
+      "rect": {
+        "left": 571,
+        "top": 552,
+        "right": 646,
+        "bottom": 570
+      },
+      "value": "200,00"
+    },
+    {
+      "controlType": "EditControl",
+      "name": "",
+      "automationId": "Field: Entrada_salida::Descto",
+      "className": "class FieldTextView",
+      "rect": {
+        "left": 860,
+        "top": 553,
+        "right": 921,
+        "bottom": 572
+      },
+      "value": ""
+    },
+    {
+      "controlType": "EditControl",
+      "name": "",
+      "automationId": "Field: Entrada_salida::TotalDescto",
+      "className": "class FieldTextView",
+      "rect": {
+        "left": 927,
+        "top": 553,
+        "right": 988,
+        "bottom": 572
+      },
+      "value": ""
+    },
+    {
+      "controlType": "EditControl",
+      "name": "",
+      "automationId": "Field: Entrada_salida::Salida",
+      "className": "class FieldTextView",
+      "rect": {
+        "left": 16,
+        "top": 585,
+        "right": 69,
+        "bottom": 604
+      },
+      "value": "300"
+    },
+    {
+      "controlType": "EditControl",
+      "name": "",
+      "automationId": "Field: producto::Articulo",
+      "className": "class FieldTextView",
+      "rect": {
+        "left": 72,
+        "top": 579,
+        "right": 488,
+        "bottom": 608
+      },
+      "value": "Dvds MAZA 8GB Pza."
+    },
+    {
+      "controlType": "EditControl",
+      "name": "",
+      "automationId": "Field: Entrada_salida::PrecioProd",
+      "className": "class FieldTextView",
+      "rect": {
+        "left": 493,
+        "top": 583,
+        "right": 568,
+        "bottom": 602
+      },
+      "value": "1,00"
+    },
+    {
+      "controlType": "EditControl",
+      "name": "",
+      "automationId": "Field: Entrada_salida::CostoProd",
+      "className": "class FieldTextView",
+      "rect": {
+        "left": 648,
+        "top": 583,
+        "right": 717,
+        "bottom": 602
+      },
+      "value": "0,64"
+    },
+    {
+      "controlType": "EditControl",
+      "name": "",
+      "automationId": "Field: Entrada_salida::SubtotalUtilidad",
+      "className": "class FieldTextView",
+      "rect": {
+        "left": 789,
+        "top": 584,
+        "right": 853,
+        "bottom": 604
+      },
+      "value": "106,80"
+    },
+    {
+      "controlType": "EditControl",
+      "name": "",
+      "automationId": "Field: Entrada_salida::Utilidad",
+      "className": "class FieldTextView",
+      "rect": {
+        "left": 721,
+        "top": 584,
+        "right": 781,
+        "bottom": 604
+      },
+      "value": "0,36"
+    },
+    {
+      "controlType": "EditControl",
+      "name": "",
+      "automationId": "Field: Entrada_salida::Subtotal",
+      "className": "class FieldTextView",
+      "rect": {
+        "left": 571,
+        "top": 584,
+        "right": 646,
+        "bottom": 602
+      },
+      "value": "300,00"
+    },
+    {
+      "controlType": "EditControl",
+      "name": "",
+      "automationId": "Field: Entrada_salida::Descto",
+      "className": "class FieldTextView",
+      "rect": {
+        "left": 860,
+        "top": 585,
+        "right": 921,
+        "bottom": 604
+      },
+      "value": ""
+    },
+    {
+      "controlType": "EditControl",
+      "name": "",
+      "automationId": "Field: Entrada_salida::TotalDescto",
+      "className": "class FieldTextView",
+      "rect": {
+        "left": 927,
+        "top": 585,
+        "right": 988,
+        "bottom": 604
+      },
+      "value": ""
+    },
+    {
+      "controlType": "EditControl",
+      "name": "",
+      "automationId": "Field: Entrada_salida::Salida",
+      "className": "class FieldTextView",
+      "rect": {
+        "left": 16,
+        "top": 617,
+        "right": 69,
+        "bottom": 636
+      },
+      "value": "2"
+    },
+    {
+      "controlType": "EditControl",
+      "name": "",
+      "automationId": "Field: producto::Articulo",
+      "className": "class FieldTextView",
+      "rect": {
+        "left": 72,
+        "top": 611,
+        "right": 488,
+        "bottom": 640
+      },
+      "value": "BATERIA 9V DURACELL 9V ALCALINA Pza."
+    },
+    {
+      "controlType": "EditControl",
+      "name": "",
+      "automationId": "Field: Entrada_salida::PrecioProd",
+      "className": "class FieldTextView",
+      "rect": {
+        "left": 493,
+        "top": 615,
+        "right": 568,
+        "bottom": 634
+      },
+      "value": "25,00"
+    },
+    {
+      "controlType": "EditControl",
+      "name": "",
+      "automationId": "Field: Entrada_salida::CostoProd",
+      "className": "class FieldTextView",
+      "rect": {
+        "left": 648,
+        "top": 615,
+        "right": 717,
+        "bottom": 634
+      },
+      "value": "18,80"
+    },
+    {
+      "controlType": "EditControl",
+      "name": "",
+      "automationId": "Field: Entrada_salida::SubtotalUtilidad",
+      "className": "class FieldTextView",
+      "rect": {
+        "left": 789,
+        "top": 616,
+        "right": 853,
+        "bottom": 636
+      },
+      "value": "12,40"
+    },
+    {
+      "controlType": "EditControl",
+      "name": "",
+      "automationId": "Field: Entrada_salida::Utilidad",
+      "className": "class FieldTextView",
+      "rect": {
+        "left": 721,
+        "top": 616,
+        "right": 781,
+        "bottom": 636
+      },
+      "value": "6,20"
+    },
+    {
+      "controlType": "EditControl",
+      "name": "",
+      "automationId": "Field: Entrada_salida::Subtotal",
+      "className": "class FieldTextView",
+      "rect": {
+        "left": 571,
+        "top": 616,
+        "right": 646,
+        "bottom": 634
+      },
+      "value": "50,00"
+    },
+    {
+      "controlType": "EditControl",
+      "name": "",
+      "automationId": "Field: Entrada_salida::Descto",
+      "className": "class FieldTextView",
+      "rect": {
+        "left": 860,
+        "top": 617,
+        "right": 921,
+        "bottom": 636
+      },
+      "value": ""
+    },
+    {
+      "controlType": "EditControl",
+      "name": "",
+      "automationId": "Field: Entrada_salida::TotalDescto",
+      "className": "class FieldTextView",
+      "rect": {
+        "left": 927,
+        "top": 617,
+        "right": 988,
+        "bottom": 636
+      },
+      "value": ""
+    },
+    {
+      "controlType": "EditControl",
+      "name": "",
+      "automationId": "Field: Entrada_salida::Salida",
+      "className": "class FieldTextView",
+      "rect": {
+        "left": 16,
+        "top": 297,
+        "right": 69,
+        "bottom": 316
+      },
+      "value": "2"
+    },
+    {
+      "controlType": "EditControl",
+      "name": "",
+      "automationId": "Field: producto::Articulo",
+      "className": "class FieldTextView",
+      "rect": {
+        "left": 72,
+        "top": 291,
+        "right": 488,
+        "bottom": 320
+      },
+      "value": "BOLSAS CD STIKER 100 PZAS"
+    },
+    {
+      "controlType": "EditControl",
+      "name": "",
+      "automationId": "Field: Entrada_salida::PrecioProd",
+      "className": "class FieldTextView",
+      "rect": {
+        "left": 493,
+        "top": 295,
+        "right": 568,
+        "bottom": 314
+      },
+      "value": "5,00"
+    },
+    {
+      "controlType": "EditControl",
+      "name": "",
+      "automationId": "Field: Entrada_salida::CostoProd",
+      "className": "class FieldTextView",
+      "rect": {
+        "left": 648,
+        "top": 295,
+        "right": 717,
+        "bottom": 314
+      },
+      "value": "3,76"
+    },
+    {
+      "controlType": "EditControl",
+      "name": "",
+      "automationId": "Field: Entrada_salida::SubtotalUtilidad",
+      "className": "class FieldTextView",
+      "rect": {
+        "left": 789,
+        "top": 296,
+        "right": 853,
+        "bottom": 316
+      },
+      "value": "2,48"
+    },
+    {
+      "controlType": "EditControl",
+      "name": "",
+      "automationId": "Field: Entrada_salida::Utilidad",
+      "className": "class FieldTextView",
+      "rect": {
+        "left": 721,
+        "top": 296,
+        "right": 781,
+        "bottom": 316
+      },
+      "value": "1,24"
+    },
+    {
+      "controlType": "EditControl",
+      "name": "",
+      "automationId": "Field: Entrada_salida::Subtotal",
+      "className": "class FieldTextView",
+      "rect": {
+        "left": 571,
+        "top": 296,
+        "right": 646,
+        "bottom": 314
+      },
+      "value": "10,00"
+    },
+    {
+      "controlType": "EditControl",
+      "name": "",
+      "automationId": "Field: Entrada_salida::Descto",
+      "className": "class FieldTextView",
+      "rect": {
+        "left": 860,
+        "top": 297,
+        "right": 921,
+        "bottom": 316
+      },
+      "value": ""
+    },
+    {
+      "controlType": "EditControl",
+      "name": "",
+      "automationId": "Field: Entrada_salida::TotalDescto",
+      "className": "class FieldTextView",
+      "rect": {
+        "left": 927,
+        "top": 297,
+        "right": 988,
+        "bottom": 316
+      },
+      "value": ""
+    },
+    {
+      "controlType": "EditControl",
+      "name": "Tasa de Impuesto:",
+      "automationId": "Field: Libro_Venta_mes::TasaImpuesto",
+      "className": "class FieldTextView",
+      "rect": {
+        "left": 1048,
+        "top": 264,
+        "right": 1127,
+        "bottom": 282
+      },
+      "value": "0"
+    },
+    {
+      "controlType": "EditControl",
+      "name": "",
+      "automationId": "Field: Libro_Venta_mes::pago",
+      "className": "class FieldTextView",
+      "rect": {
+        "left": 1210,
+        "top": 391,
+        "right": 1320,
+        "bottom": 409
+      },
+      "value": ""
+    },
+    {
+      "controlType": "EditControl",
+      "name": "",
+      "automationId": "Field: Libro_Venta_mes::Vuelto",
+      "className": "class FieldTextView",
+      "rect": {
+        "left": 1210,
+        "top": 429,
+        "right": 1320,
+        "bottom": 447
+      },
+      "value": ""
+    },
+    {
+      "controlType": "EditControl",
+      "name": "Descuento efectuado",
+      "automationId": "Field: Libro_Venta_mes::Descuento_fact",
+      "className": "class FieldTextView",
+      "rect": {
+        "left": 1212,
+        "top": 348,
+        "right": 1322,
+        "bottom": 366
+      },
+      "value": "Descuento efectuado"
+    },
+    {
+      "controlType": "EditControl",
+      "name": "",
+      "automationId": "Field: Libro_Venta_mes::TotalGeneral",
+      "className": "class FieldTextView",
+      "rect": {
+        "left": 1046,
+        "top": 306,
+        "right": 1185,
+        "bottom": 324
+      },
+      "value": "3061"
+    },
+    {
+      "controlType": "EditControl",
+      "name": "",
+      "automationId": "Field: Libro_Venta_mes::hora",
+      "className": "class FieldTextView",
+      "rect": {
+        "left": 1247,
+        "top": 111,
+        "right": 1326,
+        "bottom": 129
+      },
+      "value": "19:18:29"
+    },
+    {
+      "controlType": "EditControl",
+      "name": "Nº de Comprobante:",
+      "automationId": "Field: Libro_Venta_mes::NumCprobte",
+      "className": "class FieldTextView",
+      "rect": {
+        "left": 626,
+        "top": 140,
+        "right": 781,
+        "bottom": 164
+      },
+      "value": "2"
+    },
+    {
+      "controlType": "EditControl",
+      "name": "Fecha:",
+      "automationId": "Field: Libro_Venta_mes::FechaCprobte",
+      "className": "class FieldTextView",
+      "rect": {
+        "left": 626,
+        "top": 163,
+        "right": 781,
+        "bottom": 187
+      },
+      "value": "2/12/2022"
+    },
+    {
+      "controlType": "EditControl",
+      "name": "",
+      "automationId": "Field: Libro_Venta_mes::NumNITCliente",
+      "className": "class FieldTextView",
+      "rect": {
+        "left": 626,
+        "top": 186,
+        "right": 781,
+        "bottom": 210
+      },
+      "value": "0"
+    },
+    {
+      "controlType": "EditControl",
+      "name": "",
+      "automationId": "Field: Libro_Venta_mes::SubtotalTotal",
+      "className": "class FieldTextView",
+      "rect": {
+        "left": 363,
+        "top": 654,
+        "right": 462,
+        "bottom": 674
+      },
+      "value": "3061"
+    },
+    {
+      "controlType": "EditControl",
+      "name": "",
+      "automationId": "Field: Libro_Venta_mes::numAutorizacion",
+      "className": "class FieldTextView",
+      "rect": {
+        "left": 626,
+        "top": 209,
+        "right": 781,
+        "bottom": 233
+      },
+      "value": ""
+    }
+  ]
+}

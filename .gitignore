@@ -1,0 +1,16 @@
+node_modules/
+dist/
+coverage/
+.env
+.env.*
+!.env.example
+__pycache__/
+.pytest_cache/
+.venv/
+*.pyc
+*.log
+firebase-service-account.json
+
+*.env
+*.env.example
+*serviceAccount.json

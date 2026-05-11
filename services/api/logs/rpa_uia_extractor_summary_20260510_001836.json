@@ -1,0 +1,10 @@
+{
+  "processed": 5,
+  "uploaded": 0,
+  "invalid": 4,
+  "errors": 0,
+  "commit": false,
+  "auditPath": "C:\\a\\AudiDisc\\services\\api\\logs\\rpa_uia_extractor_20260510_001751.jsonl",
+  "stateDb": "C:\\a\\AudiDisc\\services\\api\\logs\\migration_uia_dryrun_probe_scrollbar.db",
+  "nextSuggestedRecord": 10
+}

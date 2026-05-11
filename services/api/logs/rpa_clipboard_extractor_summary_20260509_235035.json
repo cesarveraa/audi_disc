@@ -1,0 +1,10 @@
+{
+  "processed": 0,
+  "uploaded": 0,
+  "invalid": 2,
+  "errors": 0,
+  "commit": false,
+  "auditPath": "C:\\a\\AudiDisc\\services\\api\\logs\\rpa_clipboard_extractor_20260509_235005.jsonl",
+  "stateDb": "C:\\a\\AudiDisc\\services\\api\\logs\\migration_dryrun_20_state.db",
+  "nextSuggestedRecord": 3
+}

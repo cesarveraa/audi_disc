@@ -1,0 +1,16 @@
+{
+  "processed": 1000,
+  "uploaded": 951,
+  "invalid": 49,
+  "errors": 0,
+  "commit": true,
+  "startRecord": 21,
+  "processedTotalCentavos": 130673176,
+  "uploadedTotalCentavos": 119341186,
+  "skippedExistingTotalCentavos": 0,
+  "invalidTotalCentavos": 11331990,
+  "dryRunValidTotalCentavos": 0,
+  "auditPath": "C:\\a\\AudiDisc\\services\\api\\logs\\rpa_uia_extractor_20260510_004909.jsonl",
+  "stateDb": "C:\\a\\AudiDisc\\services\\api\\logs\\migration_uia_state.db",
+  "nextSuggestedRecord": 1021
+}

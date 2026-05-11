@@ -1,0 +1,28 @@
+{
+  "expo": {
+    "name": "Audi Disc",
+    "slug": "audi-disc",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "plugins": [
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Audi Disc usa la camara para escanear codigos de barras en el POS."
+        }
+      ]
+    ],
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#E4002B"
+      }
+    }
+  }
+}
