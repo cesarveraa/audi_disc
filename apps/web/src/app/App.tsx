@@ -1,6 +1,7 @@
 import { lazy, Suspense, useEffect, useState, type ReactNode } from 'react';
 
 import { AuthProvider, useAuth } from '@app/providers/AuthProvider';
+import { ErrorBoundary } from './ErrorBoundary';
 import LoginScreen from '@features/auth/screens/LoginScreen';
 
 const InventoryScreen = lazy(() => import('@features/inventory/screens/InventoryScreen'));
@@ -27,15 +28,32 @@ function useCurrentPath() {
 
 export default function App() {
   return (
-    <AuthProvider>
-      <AppContent />
-    </AuthProvider>
+    <ErrorBoundary>
+      <AuthProvider>
+        <AppContent />
+      </AuthProvider>
+    </ErrorBoundary>
   );
 }
 
 function AppContent() {
   const path = useCurrentPath();
   const { isAdmin, isLoading, user } = useAuth();
+
+  useEffect(() => {
+    if (isLoading) {
+      return;
+    }
+    if (!user && !path.startsWith('/login')) {
+      window.history.replaceState({}, '', '/login');
+      window.dispatchEvent(new Event('audidisc:navigate'));
+      return;
+    }
+    if (user && path.startsWith('/login')) {
+      window.history.replaceState({}, '', '/inventario');
+      window.dispatchEvent(new Event('audidisc:navigate'));
+    }
+  }, [isLoading, path, user]);
 
   if (isLoading) {
     return (

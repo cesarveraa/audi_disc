@@ -12,6 +12,7 @@ router = APIRouter(tags=["sales"])
 
 
 @router.post("/sales", status_code=status.HTTP_201_CREATED)
+@router.post("/sales/checkout", status_code=status.HTTP_201_CREATED)
 @router.post("/ventas", status_code=status.HTTP_201_CREATED)
 def create_sale(
     payload: SaleCreate,

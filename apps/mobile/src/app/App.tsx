@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Pressable, SafeAreaView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import type { Customer, ProductPublic } from '@audidisc/shared';
 
@@ -48,7 +49,12 @@ function MobileAppContent() {
     if (!idToken || !user) {
       return undefined;
     }
-    void registerOperationalPushToken(idToken);
+    void registerOperationalPushToken(idToken).catch(error => {
+      console.warn(
+        '[AudiDisc Mobile Push]',
+        error instanceof Error ? error.message : 'No se pudo registrar push token',
+      );
+    });
     return subscribeToPushActions(action => {
       if (action.type === 'low_stock' && action.productId) {
         setEditProductId(action.productId);

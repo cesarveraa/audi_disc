@@ -1,24 +1,8 @@
 import type { Sale, SaleCreateInput } from '@audidisc/shared';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000';
+import { apiBlob, apiJson } from '../../../api/client';
 
-function authHeaders(idToken: string | null): HeadersInit {
-  if (!idToken) {
-    throw new Error('Sesion Firebase requerida');
-  }
-  return {
-    'Content-Type': 'application/json',
-    Authorization: `Bearer ${idToken}`,
-  };
-}
-
-async function downloadPdf(response: Response, filename: string) {
-  if (!response.ok) {
-    const detail = await response.json().catch(() => null);
-    throw new Error(detail?.detail ?? 'No se pudo generar PDF');
-  }
-
-  const blob = await response.blob();
+async function downloadPdf(blob: Blob, filename: string) {
   const url = window.URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = url;
@@ -33,29 +17,19 @@ export async function registerSale(params: {
   idToken: string | null;
   payload: SaleCreateInput;
 }): Promise<Sale> {
-  const response = await fetch(`${API_BASE_URL}/sales`, {
+  return apiJson<Sale>('/sales/checkout', {
+    idToken: params.idToken,
     method: 'POST',
-    headers: authHeaders(params.idToken),
-    body: JSON.stringify(params.payload),
+    json: params.payload,
   });
-
-  if (!response.ok) {
-    const detail = await response.json().catch(() => null);
-    throw new Error(detail?.detail ?? 'No se pudo registrar la venta');
-  }
-
-  return response.json() as Promise<Sale>;
 }
 
 export async function downloadSaleReceipt(params: {
   idToken: string | null;
   saleId: string;
 }) {
-  if (!params.idToken) {
-    throw new Error('Sesion Firebase requerida');
-  }
-  const response = await fetch(`${API_BASE_URL}/sales/${encodeURIComponent(params.saleId)}/receipt.pdf`, {
-    headers: { Authorization: `Bearer ${params.idToken}` },
+  const blob = await apiBlob(`/sales/${encodeURIComponent(params.saleId)}/receipt.pdf`, {
+    idToken: params.idToken,
   });
-  await downloadPdf(response, `audi-disc-recibo-${params.saleId}.pdf`);
+  await downloadPdf(blob, `audi-disc-recibo-${params.saleId}.pdf`);
 }

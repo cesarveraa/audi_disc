@@ -1,7 +1,7 @@
 import { Platform } from 'react-native';
 import * as Notifications from 'expo-notifications';
 
-const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL ?? 'http://127.0.0.1:8000';
+import { mobileApiFetch } from '../../api/client';
 
 type PushAction = {
   type?: string;
@@ -13,36 +13,41 @@ export async function registerOperationalPushToken(idToken: string | null) {
   if (!idToken) {
     return;
   }
-
-  if (Platform.OS === 'android') {
-    await Notifications.setNotificationChannelAsync('audi-disc-operaciones', {
-      name: 'Audi Disc Operaciones',
-      importance: Notifications.AndroidImportance.HIGH,
-      vibrationPattern: [0, 180, 120, 180],
-      lightColor: '#E4002B',
-    });
-  }
-
-  const currentPermissions = await Notifications.getPermissionsAsync();
-  const permissions = currentPermissions.granted
-    ? currentPermissions
-    : await Notifications.requestPermissionsAsync();
-  if (!permissions.granted) {
+  if (process.env.EXPO_PUBLIC_ENABLE_PUSH_NOTIFICATIONS !== 'true') {
     return;
   }
 
-  const deviceToken = await Notifications.getDevicePushTokenAsync();
-  await fetch(`${API_BASE_URL}/notifications/register-token`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${idToken}`,
-    },
-    body: JSON.stringify({
-      token: deviceToken.data,
-      platform: Platform.OS === 'ios' ? 'ios' : 'android',
-    }),
-  }).catch(() => undefined);
+  try {
+    if (Platform.OS === 'android') {
+      await Notifications.setNotificationChannelAsync('audi-disc-operaciones', {
+        name: 'Audi Disc Operaciones',
+        importance: Notifications.AndroidImportance.HIGH,
+        vibrationPattern: [0, 180, 120, 180],
+        lightColor: '#E4002B',
+      });
+    }
+
+    const currentPermissions = await Notifications.getPermissionsAsync();
+    const permissions = currentPermissions.granted
+      ? currentPermissions
+      : await Notifications.requestPermissionsAsync();
+    if (!permissions.granted) {
+      return;
+    }
+
+    const deviceToken = await Notifications.getDevicePushTokenAsync();
+    const response = await mobileApiFetch('/notifications/register-token', {
+      idToken,
+      method: 'POST',
+      json: {
+        token: deviceToken.data,
+        platform: Platform.OS === 'ios' ? 'ios' : 'android',
+      },
+    });
+    await response.text().catch(() => undefined);
+  } catch {
+    console.info('[AudiDisc Mobile Push] Push notifications no disponibles en este entorno.');
+  }
 }
 
 export function subscribeToPushActions(onAction: (action: PushAction) => void) {

@@ -10,8 +10,21 @@ from google.cloud import firestore
 from app.core.config import get_settings
 from app.core.firebase import get_firestore_client
 from app.core.security import AuthenticatedUser
-from app.domain.mappers import normalize_customer_doc, normalize_product_doc, strip_sale_financials
-from app.domain.schemas import CustomerCreate, CustomerUpdate, ProductCreate, ProductUpdate, PushTokenRegister, SaleCreate
+from app.domain.mappers import (
+    normalize_customer_doc,
+    normalize_inventory_log_doc,
+    normalize_product_doc,
+    strip_sale_financials,
+)
+from app.domain.schemas import (
+    CustomerCreate,
+    CustomerUpdate,
+    InventoryUpdate,
+    ProductCreate,
+    ProductUpdate,
+    PushTokenRegister,
+    SaleCreate,
+)
 
 
 logger = logging.getLogger("audidisc.audit")
@@ -28,7 +41,7 @@ def _sale_to_response(sale_id: str, data: dict, include_financials: bool) -> dic
         "totalCentavos": int(data.get("totalCentavos", 0)),
         "recibidoCentavos": int(data.get("recibidoCentavos", 0)),
         "cambioCentavos": int(data.get("cambioCentavos", 0)),
-        "metodo": data.get("metodo", "Efectivo"),
+        "metodo": "QR" if data.get("metodo") == "Qr" else data.get("metodo", "Efectivo"),
         "fechaLocal": data.get("fechaLocal", ""),
         "horaLocal": data.get("horaLocal", ""),
         "estado": bool(data.get("estado", True)),
@@ -65,6 +78,7 @@ class FirestoreInventoryRepository:
         self.products = self.db.collection("productos")
         self.sales = self.db.collection("ventas")
         self.customers = self.db.collection("clientes")
+        self.inventory_logs = self.db.collection("inventarioLogs")
         self.push_tokens = self.db.collection("pushTokens")
         self.notifications = self.db.collection("notifications")
         self.audit_logs = self.db.collection("auditLogs")
@@ -131,6 +145,63 @@ class FirestoreInventoryRepository:
         doc_ref.update(update_data)
         updated = doc_ref.get()
         return normalize_product_doc(product_id, updated.to_dict() or {}, include_financials)
+
+    def update_inventory(self, payload: InventoryUpdate, user: AuthenticatedUser, include_financials: bool) -> dict:
+        transaction = self.db.transaction()
+
+        @firestore.transactional
+        def run_update(tx):
+            product_ref = self.products.document(payload.productoId)
+            snapshot = product_ref.get(transaction=tx)
+            if not snapshot.exists:
+                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Product not found")
+
+            product = snapshot.to_dict() or {}
+            if not product.get("estado", True):
+                raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Product is inactive")
+
+            current_quantity = int(product.get("cantidad", 0))
+            next_quantity = current_quantity + payload.cantidadDelta
+            if next_quantity < 0:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail=(
+                        f"El ajuste deja stock negativo para {product.get('nombre', payload.productoId)}. "
+                        f"Disponible: {current_quantity}, ajuste: {payload.cantidadDelta}."
+                    ),
+                )
+
+            log_ref = self.inventory_logs.document()
+            log_doc = {
+                "productoId": payload.productoId,
+                "productoNombre": product.get("nombre", ""),
+                "tipo": payload.tipo,
+                "cantidadAnterior": current_quantity,
+                "cantidadDelta": payload.cantidadDelta,
+                "cantidadNueva": next_quantity,
+                "motivo": payload.motivo,
+                "referencia": payload.referencia,
+                "createdBy": user.uid,
+                "createdAt": firestore.SERVER_TIMESTAMP,
+            }
+            tx.update(
+                product_ref,
+                {
+                    "cantidad": next_quantity,
+                    "updatedAt": firestore.SERVER_TIMESTAMP,
+                    "updatedBy": user.uid,
+                },
+            )
+            tx.set(log_ref, log_doc)
+            product["cantidad"] = next_quantity
+            product["updatedBy"] = user.uid
+            log_doc["createdAt"] = datetime.now(ZoneInfo(get_settings().timezone)).isoformat()
+            return {
+                "producto": normalize_product_doc(payload.productoId, product, include_financials),
+                "log": normalize_inventory_log_doc(log_ref.id, log_doc),
+            }
+
+        return run_update(transaction)
 
     def soft_delete_product(self, product_id: str, user: AuthenticatedUser) -> dict:
         doc_ref = self.products.document(product_id)

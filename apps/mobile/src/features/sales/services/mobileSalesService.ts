@@ -1,11 +1,11 @@
 import type { PaymentMethod, ProductPublic, Sale, SaleCreateInput } from '@audidisc/shared';
 
+import { mobileApiJson } from '../../../api/client';
+
 export type MobileCartItem = {
   product: ProductPublic;
   quantity: number;
 };
-
-const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL ?? 'http://127.0.0.1:8000';
 
 export function cartTotal(items: MobileCartItem[]) {
   return items.reduce((sum, item) => sum + item.quantity * item.product.precioVentaCentavos, 0);
@@ -38,19 +38,9 @@ export async function registerMobileSale(params: {
     throw new Error('Sesion Firebase requerida');
   }
 
-  const response = await fetch(`${API_BASE_URL}/sales`, {
+  return mobileApiJson<Sale>('/sales/checkout', {
+    idToken: params.idToken,
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${params.idToken}`,
-    },
-    body: JSON.stringify(params.payload),
+    json: params.payload,
   });
-
-  if (!response.ok) {
-    const detail = await response.json().catch(() => null);
-    throw new Error(detail?.detail ?? 'No se pudo registrar la venta movil');
-  }
-
-  return response.json() as Promise<Sale>;
 }

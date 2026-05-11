@@ -274,7 +274,7 @@ export default function MobilePOSScreen({ products, initialCustomer, initialProd
             <Text style={styles.modalTotal}>{formatBsFromCentavos(total)}</Text>
 
             <View style={styles.methodRow}>
-              {(['Efectivo', 'Qr', 'Transferencia'] as PaymentMethod[]).map(nextMethod => (
+              {(['Efectivo', 'QR', 'Transferencia'] as PaymentMethod[]).map(nextMethod => (
                 <Pressable
                   key={nextMethod}
                   style={[styles.methodButton, method === nextMethod && styles.methodButtonActive]}

@@ -1,5 +1,6 @@
 export * from './domain/entities/Dashboard';
 export * from './domain/entities/Customer';
+export * from './domain/entities/InventoryLog';
 export * from './domain/entities/Product';
 export * from './domain/entities/Sale';
 export * from './domain/entities/User';

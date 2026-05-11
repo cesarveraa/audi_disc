@@ -59,6 +59,22 @@ def normalize_customer_doc(customer_id: str, data: dict) -> dict:
     }
 
 
+def normalize_inventory_log_doc(log_id: str, data: dict) -> dict:
+    return {
+        "id": log_id,
+        "productoId": data.get("productoId", ""),
+        "productoNombre": data.get("productoNombre", ""),
+        "tipo": data.get("tipo", "ajuste"),
+        "cantidadAnterior": int(data.get("cantidadAnterior", 0)),
+        "cantidadDelta": int(data.get("cantidadDelta", 0)),
+        "cantidadNueva": int(data.get("cantidadNueva", 0)),
+        "motivo": data.get("motivo"),
+        "referencia": data.get("referencia"),
+        "createdBy": data.get("createdBy", ""),
+        "createdAt": datetime_to_iso(data.get("createdAt")),
+    }
+
+
 def strip_sale_financials(sale: dict, include_financials: bool) -> dict:
     if include_financials:
         return sale

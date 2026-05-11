@@ -1,7 +1,15 @@
 from typing import Protocol
 
 from app.core.security import AuthenticatedUser
-from app.domain.schemas import CustomerCreate, CustomerUpdate, ProductCreate, ProductUpdate, PushTokenRegister, SaleCreate
+from app.domain.schemas import (
+    CustomerCreate,
+    CustomerUpdate,
+    InventoryUpdate,
+    ProductCreate,
+    ProductUpdate,
+    PushTokenRegister,
+    SaleCreate,
+)
 
 
 class InventoryRepository(Protocol):
@@ -18,6 +26,9 @@ class InventoryRepository(Protocol):
         user: AuthenticatedUser,
         include_financials: bool,
     ) -> dict:
+        ...
+
+    def update_inventory(self, payload: InventoryUpdate, user: AuthenticatedUser, include_financials: bool) -> dict:
         ...
 
     def soft_delete_product(self, product_id: str, user: AuthenticatedUser) -> dict:

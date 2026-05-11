@@ -18,7 +18,7 @@ type Props = {
   onConfirm: () => void;
 };
 
-const methods: PaymentMethod[] = ['Efectivo', 'Qr', 'Transferencia'];
+const methods: PaymentMethod[] = ['Efectivo', 'QR', 'Transferencia'];
 
 export function PaymentModal({
   open,

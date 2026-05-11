@@ -10,7 +10,7 @@ from fastapi.testclient import TestClient
 
 from app.core.security import AuthenticatedUser, get_current_user
 from app.domain.mappers import normalize_product_doc, strip_sale_financials
-from app.domain.schemas import ProductCreate, ProductUpdate, SaleCreate
+from app.domain.schemas import InventoryUpdate, ProductCreate, ProductUpdate, SaleCreate
 from app.main import create_app
 
 
@@ -46,6 +46,7 @@ class InMemoryInventoryRepository:
             },
         }
         self.sales: dict[str, dict] = {}
+        self.inventory_logs: dict[str, dict] = {}
         self.audit_logs: list[dict] = []
 
     def list_products(self, estado: bool | None, query: str | None, include_financials: bool) -> list[dict]:
@@ -93,6 +94,42 @@ class InMemoryInventoryRepository:
         next_doc["updatedAt"] = datetime.now().isoformat()
         self.products[product_id] = next_doc
         return normalize_product_doc(product_id, next_doc, include_financials)
+
+    def update_inventory(self, payload: InventoryUpdate, user: AuthenticatedUser, include_financials: bool) -> dict:
+        with self.lock:
+            product = self.products.get(payload.productoId)
+            if product is None:
+                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Product not found")
+            if not product["estado"]:
+                raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Product is inactive")
+
+            previous = int(product["cantidad"])
+            next_quantity = previous + payload.cantidadDelta
+            if next_quantity < 0:
+                raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="El ajuste deja stock negativo")
+
+            product["cantidad"] = next_quantity
+            product["updatedBy"] = user.uid
+            product["updatedAt"] = "2026-05-07T09:30:00"
+            log_id = f"l{len(self.inventory_logs) + 1}"
+            log = {
+                "id": log_id,
+                "productoId": payload.productoId,
+                "productoNombre": product["nombre"],
+                "tipo": payload.tipo,
+                "cantidadAnterior": previous,
+                "cantidadDelta": payload.cantidadDelta,
+                "cantidadNueva": next_quantity,
+                "motivo": payload.motivo,
+                "referencia": payload.referencia,
+                "createdBy": user.uid,
+                "createdAt": "2026-05-07T09:30:00",
+            }
+            self.inventory_logs[log_id] = deepcopy(log)
+            return {
+                "producto": normalize_product_doc(payload.productoId, product, include_financials),
+                "log": log,
+            }
 
     def soft_delete_product(self, product_id: str, user: AuthenticatedUser) -> dict:
         if product_id not in self.products:
@@ -307,6 +344,33 @@ def make_client(role: str = "Administrador", repository: InMemoryInventoryReposi
     return TestClient(app), repo
 
 
+def test_protected_routes_require_firebase_bearer_token_without_override() -> None:
+    app = create_app(InMemoryInventoryRepository())
+    client = TestClient(app)
+
+    response = client.get("/productos")
+
+    assert response.status_code == 401
+    assert response.json()["detail"] == "Missing Firebase bearer token"
+
+
+def test_cors_allows_localhost_and_loopback_frontend_origins() -> None:
+    client, _repo = make_client("Administrador")
+
+    for origin in ("http://localhost:5173", "http://127.0.0.1:5173"):
+        response = client.options(
+            "/api/v1/productos",
+            headers={
+                "Origin": origin,
+                "Access-Control-Request-Method": "GET",
+                "Access-Control-Request-Headers": "Authorization",
+            },
+        )
+
+        assert response.status_code == 200
+        assert response.headers["access-control-allow-origin"] == origin
+
+
 def test_product_validation_rejects_extra_fields() -> None:
     client, _repo = make_client("Administrador")
     response = client.post(
@@ -412,6 +476,31 @@ def test_sales_alias_decrements_inventory_and_keeps_snapshot() -> None:
     assert repo.products["p1"]["cantidad"] == 4
 
 
+def test_checkout_endpoint_decrements_inventory_transactionally() -> None:
+    client, repo = make_client("Vendedor")
+    response = client.post(
+        "/api/v1/sales/checkout",
+        json={
+            "productos": [
+                {
+                    "productoId": "p1",
+                    "cantidad": 2,
+                    "precioVendidoCentavos": 1500,
+                }
+            ],
+            "totalCentavos": 3000,
+            "recibidoCentavos": 3000,
+            "metodo": "QR",
+        },
+    )
+
+    assert response.status_code == 201
+    sale = response.json()
+    assert sale["metodo"] == "QR"
+    assert sale["totalCentavos"] == 3000
+    assert repo.products["p1"]["cantidad"] == 3
+
+
 def test_sale_rejects_insufficient_stock_without_decrementing() -> None:
     client, repo = make_client("Vendedor")
     response = client.post(
@@ -426,7 +515,7 @@ def test_sale_rejects_insufficient_stock_without_decrementing() -> None:
             ],
             "totalCentavos": 15000,
             "recibidoCentavos": 15000,
-            "metodo": "Qr",
+            "metodo": "QR",
         },
     )
 
@@ -451,6 +540,58 @@ def test_sale_rejects_duplicate_lines_when_combined_quantity_exceeds_stock() -> 
     )
 
     assert response.status_code == 409
+    assert repo.products["p1"]["cantidad"] == 5
+
+
+def test_inventory_update_adjusts_stock_and_logs_movement() -> None:
+    client, repo = make_client("Administrador")
+    response = client.patch(
+        "/api/v1/inventory/update",
+        json={
+            "productoId": "p1",
+            "tipo": "entrada",
+            "cantidadDelta": 7,
+            "motivo": "Nueva mercaderia",
+            "referencia": "FAC-100",
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["producto"]["cantidad"] == 12
+    assert payload["log"]["cantidadAnterior"] == 5
+    assert payload["log"]["cantidadDelta"] == 7
+    assert payload["log"]["cantidadNueva"] == 12
+    assert repo.inventory_logs["l1"]["createdBy"] == "test-user"
+
+
+def test_inventory_update_rejects_negative_stock() -> None:
+    client, repo = make_client("Administrador")
+    response = client.patch(
+        "/api/v1/inventory/update",
+        json={
+            "productoId": "p1",
+            "tipo": "ajuste",
+            "cantidadDelta": -8,
+        },
+    )
+
+    assert response.status_code == 409
+    assert repo.products["p1"]["cantidad"] == 5
+
+
+def test_inventory_update_requires_admin_role() -> None:
+    client, repo = make_client("Vendedor")
+    response = client.patch(
+        "/api/v1/inventory/update",
+        json={
+            "productoId": "p1",
+            "tipo": "entrada",
+            "cantidadDelta": 1,
+        },
+    )
+
+    assert response.status_code == 403
     assert repo.products["p1"]["cantidad"] == 5
 
 
@@ -504,7 +645,7 @@ def test_sales_history_hides_financials_for_seller() -> None:
             "productos": [{"productoId": "p1", "cantidad": 1, "precioVendidoCentavos": 1500}],
             "totalCentavos": 1500,
             "recibidoCentavos": 2000,
-            "metodo": "Qr",
+            "metodo": "QR",
         },
     )
 

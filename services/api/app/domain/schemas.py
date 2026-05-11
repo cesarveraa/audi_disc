@@ -9,7 +9,8 @@ PositiveMoneyCentavos = Annotated[int, Field(gt=0, le=100_000_000)]
 StrictName = Annotated[str, Field(min_length=1, max_length=120)]
 OptionalLabel = Annotated[str | None, Field(default=None, max_length=80)]
 Role = Literal["Administrador", "Vendedor"]
-PaymentMethod = Literal["Efectivo", "Qr", "Transferencia"]
+PaymentMethod = Literal["Efectivo", "QR", "Transferencia"]
+InventoryMovementType = Literal["entrada", "ajuste"]
 PushPlatform = Literal["android", "ios", "web"]
 
 
@@ -73,6 +74,10 @@ class ProductAdminResponse(ProductPublicResponse):
     margenPorcentaje: float
 
 
+class Producto(ProductAdminResponse):
+    pass
+
+
 class SaleItemCreate(StrictModel):
     productoId: Annotated[str, Field(min_length=1, max_length=160)]
     cantidad: Annotated[int, Field(gt=0, le=10_000)]
@@ -85,6 +90,13 @@ class SaleCreate(StrictModel):
     recibidoCentavos: MoneyCentavos
     metodo: PaymentMethod
     clienteId: Annotated[str | None, Field(default=None, min_length=1, max_length=160)] = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def normalize_payment_method(cls, data: object) -> object:
+        if isinstance(data, dict) and data.get("metodo") == "Qr":
+            return {**data, "metodo": "QR"}
+        return data
 
 
 class SaleItemSnapshot(StrictModel):
@@ -115,6 +127,45 @@ class SaleResponse(StrictModel):
     createdAt: str | None = None
     clienteId: str | None = None
     clienteSnapshot: dict | None = None
+
+
+class Venta(SaleResponse):
+    pass
+
+
+class InventoryUpdate(StrictModel):
+    productoId: Annotated[str, Field(min_length=1, max_length=160)]
+    tipo: InventoryMovementType
+    cantidadDelta: Annotated[int, Field(ge=-1_000_000, le=1_000_000)]
+    motivo: Annotated[str | None, Field(default=None, max_length=180)] = None
+    referencia: Annotated[str | None, Field(default=None, max_length=180)] = None
+
+    @model_validator(mode="after")
+    def validate_delta(self) -> "InventoryUpdate":
+        if self.cantidadDelta == 0:
+            raise ValueError("cantidadDelta must be different from zero")
+        if self.tipo == "entrada" and self.cantidadDelta < 0:
+            raise ValueError("entrada movements must increase stock")
+        return self
+
+
+class InventarioLog(StrictModel):
+    id: str
+    productoId: str
+    productoNombre: str
+    tipo: InventoryMovementType
+    cantidadAnterior: int
+    cantidadDelta: int
+    cantidadNueva: int
+    motivo: str | None = None
+    referencia: str | None = None
+    createdBy: str
+    createdAt: str | None = None
+
+
+class InventoryUpdateResponse(StrictModel):
+    producto: ProductAdminResponse
+    log: InventarioLog
 
 
 class CustomerCreate(StrictModel):

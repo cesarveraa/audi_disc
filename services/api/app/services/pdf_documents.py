@@ -238,7 +238,7 @@ def _method_totals(history: dict) -> list[tuple[str, int, int]]:
         totals[method]["count"] += 1
         totals[method]["total"] += int(sale.get("totalCentavos", 0))
 
-    preferred = ["Efectivo", "Qr", "Transferencia"]
+    preferred = ["Efectivo", "QR", "Transferencia", "Qr"]
     ordered = [method for method in preferred if method in totals]
     ordered.extend(sorted(method for method in totals if method not in preferred))
     return [(method, totals[method]["count"], totals[method]["total"]) for method in ordered]

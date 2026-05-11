@@ -5,6 +5,7 @@ import { formatBsFromCentavos } from '@audidisc/shared';
 type Props = {
   products: Product[];
   query: string;
+  isSearching: boolean;
   addedProductId: string | null;
   onQueryChange: (query: string) => void;
   onAddProduct: (product: Product) => void;
@@ -27,6 +28,7 @@ function productImage(product: Product): string {
 export function ProductSearchPanel({
   products,
   query,
+  isSearching,
   addedProductId,
   onQueryChange,
   onAddProduct,
@@ -49,6 +51,12 @@ export function ProductSearchPanel({
           className="min-w-0 flex-1 border-0 bg-transparent text-sm font-medium text-gray-950 outline-none placeholder:text-gray-400"
         />
       </label>
+
+      {isSearching && (
+        <div className="mb-3 rounded-2xl bg-gray-50 px-4 py-2 text-xs font-semibold text-gray-500">
+          Actualizando busqueda...
+        </div>
+      )}
 
       <div className="grid max-h-[calc(100vh-220px)] gap-3 overflow-y-auto pr-1">
         {products.map(product => {
@@ -98,4 +106,3 @@ export function ProductSearchPanel({
     </aside>
   );
 }
-

@@ -1,4 +1,5 @@
 import json
+import logging
 from typing import Any
 from urllib.parse import quote
 
@@ -6,6 +7,8 @@ import firebase_admin
 from firebase_admin import credentials, firestore
 
 from app.core.config import Settings, get_settings
+
+logger = logging.getLogger("audidisc.firebase")
 
 
 def _normalize_private_key(value: str) -> str:
@@ -20,6 +23,12 @@ def service_account_info_from_settings(settings: Settings) -> dict[str, Any]:
             raise RuntimeError("AUDIDISC_FIREBASE_SERVICE_ACCOUNT_JSON no es JSON valido") from exc
         if "private_key" in data:
             data["private_key"] = _normalize_private_key(str(data["private_key"]))
+        logger.info(
+            "AUDIDISC_FIREBASE_SERVICE_ACCOUNT_JSON loaded project_id=%s client_email=%s has_private_key=%s",
+            data.get("project_id"),
+            data.get("client_email"),
+            bool(data.get("private_key")),
+        )
         return data
 
     required = {
@@ -36,6 +45,12 @@ def service_account_info_from_settings(settings: Settings) -> dict[str, Any]:
         )
 
     client_email = str(settings.firebase_client_email)
+    logger.info(
+        "Firebase service account loaded from split env project_id=%s client_email=%s has_private_key=%s",
+        settings.firebase_project_id,
+        client_email,
+        bool(settings.firebase_private_key),
+    )
     return {
         "type": "service_account",
         "project_id": settings.firebase_project_id,
@@ -59,6 +74,7 @@ def initialize_firebase() -> None:
     service_account = service_account_info_from_settings(settings)
     cred = credentials.Certificate(service_account)
     firebase_admin.initialize_app(cred, {"projectId": service_account["project_id"]})
+    logger.info("Firebase Admin initialized project_id=%s", service_account["project_id"])
 
 
 def get_firestore_client():

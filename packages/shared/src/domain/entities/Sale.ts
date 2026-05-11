@@ -1,4 +1,4 @@
-export type PaymentMethod = 'Efectivo' | 'Qr' | 'Transferencia';
+export type PaymentMethod = 'Efectivo' | 'QR' | 'Transferencia';
 
 export interface SaleItemInput {
   productoId: string;

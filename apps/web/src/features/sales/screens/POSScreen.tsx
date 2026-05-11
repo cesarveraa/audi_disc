@@ -8,6 +8,7 @@ import {
   LogOut,
   PauseCircle,
   Play,
+  Printer,
   ReceiptText,
   Search,
   ShoppingBag,
@@ -16,7 +17,7 @@ import {
   UserRound,
   X,
 } from 'lucide-react';
-import type { Customer, PaymentMethod, Product } from '@audidisc/shared';
+import type { Customer, PaymentMethod, Product, Sale } from '@audidisc/shared';
 import { filterProducts, formatBsFromCentavos } from '@audidisc/shared';
 
 import { useRequiredAuth } from '@app/providers/AuthProvider';
@@ -26,7 +27,8 @@ import { fetchInventoryProducts } from '@features/inventory/services/inventorySe
 import { CartItemCard } from '@features/sales/components/CartItemCard';
 import { PaymentModal } from '@features/sales/components/PaymentModal';
 import { ProductSearchPanel } from '@features/sales/components/ProductSearchPanel';
-import { downloadSaleReceipt, registerSale } from '@features/sales/services/salesService';
+import { generateSaleReceiptPdf } from '@features/sales/services/receiptPdf';
+import { registerSale } from '@features/sales/services/salesService';
 import {
   buildSalePayload,
   calculateCartTotal,
@@ -74,6 +76,17 @@ function playClink() {
   window.setTimeout(() => void audio.close(), 220);
 }
 
+function useDebouncedValue<T>(value: T, delayMs: number) {
+  const [debouncedValue, setDebouncedValue] = useState(value);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setDebouncedValue(value), delayMs);
+    return () => window.clearTimeout(timer);
+  }, [delayMs, value]);
+
+  return debouncedValue;
+}
+
 export default function POSScreen() {
   const { idToken, isAdmin, logout, user } = useRequiredAuth();
   const [products, setProducts] = useState<Product[]>([]);
@@ -92,6 +105,7 @@ export default function POSScreen() {
   const [isProcessing, setProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [lastSale, setLastSale] = useState<Sale | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -136,12 +150,15 @@ export default function POSScreen() {
     };
   }, [customerQuery, idToken]);
 
+  const debouncedQuery = useDebouncedValue(query, 180);
   const filteredProducts = useMemo(
-    () => filterProducts(products, query),
-    [products, query],
+    () => filterProducts(products, debouncedQuery),
+    [debouncedQuery, products],
   );
   const cart = activeCart.items;
   const totalCentavos = useMemo(() => calculateCartTotal(cart), [cart]);
+  const taxCentavos = useMemo(() => Math.round(totalCentavos * 0.13), [totalCentavos]);
+  const subtotalAntesImpuestoCentavos = Math.max(0, totalCentavos - taxCentavos);
   const cartCount = cart.reduce((total, item) => total + item.quantity, 0);
 
   function updateCart(updater: (items: CartItem[]) => CartItem[]) {
@@ -154,6 +171,7 @@ export default function POSScreen() {
   function addProduct(product: Product) {
     setError(null);
     setSuccessMessage(null);
+    setLastSale(null);
     if (!canAddProduct(cart, product)) {
       setError('Stock insuficiente para agregar mas unidades.');
       return;
@@ -303,8 +321,9 @@ export default function POSScreen() {
       setCustomerQuery('');
       setPaymentOpen(false);
       setSuccessMessage(`Venta ${sale.id} registrada. Vuelto: ${formatBsFromCentavos(sale.cambioCentavos)}.`);
-      void downloadSaleReceipt({ idToken, saleId: sale.id }).catch(() => {
-        setError('Venta registrada, pero no se pudo descargar el recibo PDF.');
+      setLastSale(sale);
+      void generateSaleReceiptPdf(sale).catch(() => {
+        setError('Venta registrada, pero no se pudo generar el recibo PDF.');
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo registrar la venta');
@@ -416,13 +435,27 @@ export default function POSScreen() {
               <span className="mt-1 block text-sm font-medium text-gray-500">
                 {activeCart.label} / {cartCount} unidades
               </span>
+              <span className="mt-1 block text-xs font-semibold text-gray-400">
+                IVA estimado {formatBsFromCentavos(taxCentavos)}
+              </span>
             </div>
           </header>
 
           {successMessage && (
-            <div className="mb-5 flex items-center gap-3 rounded-panel border border-green-100 bg-green-50 px-4 py-3 text-sm font-semibold text-green-800">
-              <BadgeCheck className="h-5 w-5" />
-              {successMessage}
+            <div className="mb-5 flex flex-col gap-3 rounded-panel border border-green-100 bg-green-50 px-4 py-3 text-sm font-semibold text-green-800 sm:flex-row sm:items-center sm:justify-between">
+              <span className="flex items-center gap-3">
+                <BadgeCheck className="h-5 w-5" />
+                {successMessage}
+              </span>
+              {lastSale && (
+                <button
+                  className="inline-flex h-10 items-center justify-center gap-2 rounded-2xl bg-white px-4 text-sm font-bold text-green-800 shadow-sm transition hover:bg-green-100 active:scale-[0.98]"
+                  onClick={() => void generateSaleReceiptPdf(lastSale)}
+                >
+                  <Printer className="h-4 w-4" />
+                  Imprimir Recibo
+                </button>
+              )}
             </div>
           )}
           {error && !isPaymentOpen && (
@@ -551,12 +584,13 @@ export default function POSScreen() {
             <ProductSearchPanel
               products={filteredProducts}
               query={query}
+              isSearching={query !== debouncedQuery}
               addedProductId={addedProductId}
               onQueryChange={setQuery}
               onAddProduct={addProduct}
             />
 
-            <section className="rounded-panel border border-white/70 bg-white/75 p-4 shadow-card backdrop-blur-xl sm:p-5">
+            <section className="rounded-panel border border-white/70 bg-white/75 p-4 shadow-card backdrop-blur-xl sm:p-5 xl:sticky xl:top-6 xl:max-h-[calc(100vh-48px)] xl:overflow-y-auto">
               <div className="mb-5 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-[0.16em] text-gray-500">
@@ -607,15 +641,16 @@ export default function POSScreen() {
               </div>
 
               <footer className="mt-5 rounded-panel bg-gray-950 p-5 text-white">
-                <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
                   <div>
                     <span className="text-sm font-semibold text-white/70">Total a pagar</span>
                     <strong className="mt-1 block text-4xl font-semibold tracking-tight">
                       {formatBsFromCentavos(totalCentavos)}
                     </strong>
-                    <span className="mt-1 block text-sm font-medium text-white/70">
-                      {totalCentavos} centavos exactos
-                    </span>
+                    <div className="mt-3 grid max-w-md gap-2 text-sm font-semibold text-white/70 sm:grid-cols-2">
+                      <span>Subtotal {formatBsFromCentavos(subtotalAntesImpuestoCentavos)}</span>
+                      <span>IVA estimado {formatBsFromCentavos(taxCentavos)}</span>
+                    </div>
                   </div>
                   <AppButton
                     variant="primary"

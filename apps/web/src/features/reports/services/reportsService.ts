@@ -1,21 +1,8 @@
 import type { ReportsDashboard, Sale, SalesHistory, UserRole } from '@audidisc/shared';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000';
+import { apiBlob, apiJson } from '../../../api/client';
 
-function authHeaders(idToken: string | null): HeadersInit {
-  if (!idToken) {
-    throw new Error('Sesion Firebase requerida');
-  }
-  return { Authorization: `Bearer ${idToken}` };
-}
-
-async function downloadPdf(response: Response, filename: string) {
-  if (!response.ok) {
-    const detail = await response.json().catch(() => null);
-    throw new Error(detail?.detail ?? 'No se pudo generar PDF');
-  }
-
-  const blob = await response.blob();
+async function downloadPdf(blob: Blob, filename: string) {
   const url = window.URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = url;
@@ -31,13 +18,7 @@ export async function fetchReportsDashboard(params: {
   role: UserRole;
 }): Promise<ReportsDashboard> {
   void params.role;
-  const response = await fetch(`${API_BASE_URL}/reports/dashboard`, {
-    headers: authHeaders(params.idToken),
-  });
-  if (!response.ok) {
-    throw new Error('No se pudo cargar el dashboard de reportes');
-  }
-  return response.json() as Promise<ReportsDashboard>;
+  return apiJson<ReportsDashboard>('/reports/dashboard', { idToken: params.idToken });
 }
 
 export async function fetchSalesHistory(params: {
@@ -51,28 +32,17 @@ export async function fetchSalesHistory(params: {
     dateFrom: params.dateFrom,
     dateTo: params.dateTo,
   });
-  const response = await fetch(`${API_BASE_URL}/sales/history?${query.toString()}`, {
-    headers: authHeaders(params.idToken),
-  });
-  if (!response.ok) {
-    throw new Error('No se pudo cargar el historial de ventas');
-  }
-  return response.json() as Promise<SalesHistory>;
+  return apiJson<SalesHistory>(`/sales/history?${query.toString()}`, { idToken: params.idToken });
 }
 
 export async function voidSale(params: {
   idToken: string | null;
   saleId: string;
 }): Promise<Sale> {
-  const response = await fetch(`${API_BASE_URL}/sales/${encodeURIComponent(params.saleId)}/void`, {
+  return apiJson<Sale>(`/sales/${encodeURIComponent(params.saleId)}/void`, {
+    idToken: params.idToken,
     method: 'POST',
-    headers: authHeaders(params.idToken),
   });
-  if (!response.ok) {
-    const detail = await response.json().catch(() => null);
-    throw new Error(detail?.detail ?? 'No se pudo anular la venta');
-  }
-  return response.json() as Promise<Sale>;
 }
 
 export async function downloadCashClosePdf(params: {
@@ -84,9 +54,8 @@ export async function downloadCashClosePdf(params: {
     dateFrom: params.dateFrom,
     dateTo: params.dateTo,
   });
-  const response = await fetch(`${API_BASE_URL}/reports/cash-close.pdf?${query.toString()}`, {
-    headers: authHeaders(params.idToken),
+  const blob = await apiBlob(`/reports/cash-close.pdf?${query.toString()}`, {
+    idToken: params.idToken,
   });
-  await downloadPdf(response, `audi-disc-cierre-${params.dateFrom}-${params.dateTo}.pdf`);
+  await downloadPdf(blob, `audi-disc-cierre-${params.dateFrom}-${params.dateTo}.pdf`);
 }
-
