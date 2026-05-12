@@ -9,11 +9,38 @@ const firebaseConfig = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID,
 };
 
-export function getFirebaseApp(): FirebaseApp | null {
-  if (!firebaseConfig.apiKey || !firebaseConfig.projectId || !firebaseConfig.appId) {
+let firebaseApp: FirebaseApp | null | undefined;
+
+function missingFirebaseConfigKeys() {
+  return [
+    ['VITE_FIREBASE_API_KEY', firebaseConfig.apiKey],
+    ['VITE_FIREBASE_AUTH_DOMAIN', firebaseConfig.authDomain],
+    ['VITE_FIREBASE_PROJECT_ID', firebaseConfig.projectId],
+    ['VITE_FIREBASE_STORAGE_BUCKET', firebaseConfig.storageBucket],
+    ['VITE_FIREBASE_MESSAGING_SENDER_ID', firebaseConfig.messagingSenderId],
+    ['VITE_FIREBASE_APP_ID', firebaseConfig.appId],
+  ]
+    .filter(([, value]) => !value)
+    .map(([key]) => key);
+}
+
+export function initializeFirebaseApp(): FirebaseApp | null {
+  if (firebaseApp !== undefined) {
+    return firebaseApp;
+  }
+
+  const missingKeys = missingFirebaseConfigKeys();
+  if (missingKeys.length > 0) {
+    console.error(`[AudiDisc Firebase] Faltan variables de entorno: ${missingKeys.join(', ')}`);
+    firebaseApp = null;
     return null;
   }
 
-  return getApps().length ? getApp() : initializeApp(firebaseConfig);
+  firebaseApp = getApps().length ? getApp() : initializeApp(firebaseConfig);
+  console.log("🔥 Firebase inicializado correctamente");
+  return firebaseApp;
 }
 
+export function getFirebaseApp(): FirebaseApp | null {
+  return initializeFirebaseApp();
+}

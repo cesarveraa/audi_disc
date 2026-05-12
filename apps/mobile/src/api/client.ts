@@ -48,8 +48,8 @@ export function getMobileApiBaseUrls() {
   const simulatorUrl = Platform.OS === 'ios' ? `http://127.0.0.1:${API_PORT}/api/v1` : null;
 
   return unique([
-    metroHostUrl,
     configuredUrl,
+    metroHostUrl,
     emulatorUrl,
     simulatorUrl,
   ]);

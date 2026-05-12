@@ -6,6 +6,7 @@ import type { Customer, ProductPublic } from '@audidisc/shared';
 
 import { MobileAuthProvider, useMobileAuth } from '@app/providers/MobileAuthProvider';
 import { colors } from '@core/theme/colors';
+import { initializeFirebaseApp } from '@infra/firebase/firebaseApp';
 import { registerOperationalPushToken, subscribeToPushActions } from '@infra/notifications/pushNotifications';
 import MobileLoginScreen from '@features/auth/screens/MobileLoginScreen';
 import MobileCustomersScreen from '@features/customers/screens/MobileCustomersScreen';
@@ -13,6 +14,8 @@ import MobileProductEditScreen from '@features/inventory/screens/MobileProductEd
 import MobileInventoryScreen from '@features/inventory/screens/MobileInventoryScreen';
 import MobileReportsScreen from '@features/reports/screens/MobileReportsScreen';
 import MobilePOSScreen from '@features/sales/screens/MobilePOSScreen';
+
+initializeFirebaseApp();
 
 type MobileView = 'inventory' | 'pos' | 'reports' | 'customers' | 'productEdit';
 
