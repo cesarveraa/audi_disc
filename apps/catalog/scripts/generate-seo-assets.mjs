@@ -222,7 +222,7 @@ function injectSeoHead(html, seo) {
     `<meta name="twitter:image" content="${escapeHtml(seo.image)}">`,
     `<script type="application/ld+json">${JSON.stringify(seo.jsonLd)}</script>`,
   ].join('\n    ');
-  return clean.replace(/<head>/i, `<head>\n    ${head}`);
+  return clean.replace(/<head>/i, () => `<head>\n    ${head}`);
 }
 
 function productPath(product) {

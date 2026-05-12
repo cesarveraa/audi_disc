@@ -45,7 +45,7 @@ export function productJsonLd(product: CatalogProduct) {
   return {
     '@context': 'https://schema.org',
     '@type': 'Product',
-    name: productSeoTitle(product).replace(' - Stock en Sucre, Bolivia', ''),
+    name: productSeoTitle(product).replace(` - Stock en ${business.city}, Bolivia`, ''),
     image: [absoluteUrl(imageForProduct(product))],
     description: productDescription(product),
     brand: product.marca

@@ -370,7 +370,7 @@ function ProductDetail({
             {[product.marca, product.categoria].filter(Boolean).join(' / ') || 'Audi Disc Sucre'}
           </p>
           <h1 className="mt-3 text-3xl font-semibold leading-tight text-catalog-ink sm:text-5xl">
-            {title.replace(' - Stock en Sucre, Bolivia', '')}
+            {title.replace(` - Stock en ${business.city}, Bolivia`, '')}
           </h1>
           <p className="mt-5 text-base leading-7 text-catalog-olive">
             {description}
