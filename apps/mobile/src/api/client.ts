@@ -43,12 +43,19 @@ export function getMobileApiBaseUrls() {
   const configuredUrl = process.env.EXPO_PUBLIC_API_BASE_URL
     ? normalizeApiBaseUrl(process.env.EXPO_PUBLIC_API_BASE_URL)
     : null;
+
+  // Si existe una URL configurada en .env, usar SOLAMENTE esa.
+  // Esto evita que si la API remota falla, intente conectar a localhost.
+  if (configuredUrl) {
+    return [configuredUrl];
+  }
+
+  // Fallbacks locales solo si no hay .env configurado
   const metroHostUrl = getMetroHostApiUrl();
   const emulatorUrl = Platform.OS === 'android' ? `http://10.0.2.2:${API_PORT}/api/v1` : null;
   const simulatorUrl = Platform.OS === 'ios' ? `http://127.0.0.1:${API_PORT}/api/v1` : null;
 
   return unique([
-    configuredUrl,
     metroHostUrl,
     emulatorUrl,
     simulatorUrl,

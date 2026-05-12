@@ -63,6 +63,7 @@ class ProductPublicResponse(StrictModel):
     cantidad: int
     stockMinimo: int
     precioVentaCentavos: int
+    imagenUrl: str | None = None
     estado: bool
     createdAt: str | None = None
     updatedAt: str | None = None
@@ -72,6 +73,15 @@ class ProductAdminResponse(ProductPublicResponse):
     precioCompraCentavos: int
     utilidadCentavos: int
     margenPorcentaje: float
+
+
+class CatalogProductResponse(StrictModel):
+    id: str
+    nombre: str
+    marca: str | None
+    categoria: str | None
+    precioVentaCentavos: int
+    imagenUrl: str | None
 
 
 class Producto(ProductAdminResponse):

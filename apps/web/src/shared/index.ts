@@ -9,9 +9,19 @@ export interface ProductPublic {
   cantidad: number;
   stockMinimo: number;
   precioVentaCentavos: number;
+  imagenUrl: string | null;
   estado: boolean;
   createdAt: string | null;
   updatedAt: string | null;
+}
+
+export interface CatalogProduct {
+  id: string;
+  nombre: string;
+  marca: string | null;
+  categoria: string | null;
+  precioVentaCentavos: number;
+  imagenUrl: string | null;
 }
 
 export interface ProductAdmin extends ProductPublic {
@@ -36,6 +46,27 @@ export interface ProductCreateInput {
 export type ProductUpdateInput = Partial<ProductCreateInput> & {
   estado?: boolean;
 };
+
+export function slugifyCatalogText(value: string): string {
+  return value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .replace(/-{2,}/g, '-');
+}
+
+export function createCatalogProductSlug(
+  product: Pick<CatalogProduct, 'nombre' | 'marca'>,
+  city = 'Sucre',
+): string {
+  const name = slugifyCatalogText(product.nombre);
+  const brand = product.marca ? slugifyCatalogText(product.marca) : '';
+  const citySlug = slugifyCatalogText(city);
+  const nameHasBrand = Boolean(brand && name.includes(brand));
+  return [name, nameHasBrand ? '' : brand, citySlug].filter(Boolean).join('-');
+}
 
 export function hasAdminFinancials(product: Product): product is ProductAdmin {
   return 'precioCompraCentavos' in product;

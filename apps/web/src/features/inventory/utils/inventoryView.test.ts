@@ -17,6 +17,7 @@ const products: ProductAdmin[] = [
     stockMinimo: 3,
     precioCompraCentavos: 1000,
     precioVentaCentavos: 1500,
+    imagenUrl: null,
     utilidadCentavos: 500,
     margenPorcentaje: 33.33,
     estado: true,
@@ -33,6 +34,7 @@ const products: ProductAdmin[] = [
     stockMinimo: 5,
     precioCompraCentavos: 300,
     precioVentaCentavos: 700,
+    imagenUrl: null,
     utilidadCentavos: 400,
     margenPorcentaje: 57.14,
     estado: true,
@@ -54,4 +56,3 @@ describe('inventory view helpers', () => {
     expect(canDisplayFinancials(products[0], false)).toBe(false);
   });
 });
-

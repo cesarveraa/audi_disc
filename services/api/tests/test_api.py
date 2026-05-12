@@ -27,6 +27,7 @@ class InMemoryInventoryRepository:
                 "stockMinimo": 2,
                 "precioCompraCentavos": 1000,
                 "precioVentaCentavos": 1500,
+                "imagenUrl": "https://cdn.audidisc.local/audifonos-pro.webp",
                 "estado": True,
                 "createdAt": "2026-05-07T08:00:00",
                 "updatedAt": "2026-05-07T08:00:00",
@@ -354,10 +355,48 @@ def test_protected_routes_require_firebase_bearer_token_without_override() -> No
     assert response.json()["detail"] == "Missing Firebase bearer token"
 
 
+def test_public_catalog_products_do_not_require_auth_and_hide_sensitive_fields() -> None:
+    app = create_app(InMemoryInventoryRepository())
+    client = TestClient(app)
+
+    response = client.get("/api/v1/public/products")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload == [
+        {
+            "id": "p1",
+            "nombre": "Audifonos Pro",
+            "marca": "Sony",
+            "categoria": "Audio",
+            "precioVentaCentavos": 1500,
+            "imagenUrl": "https://cdn.audidisc.local/audifonos-pro.webp",
+        }
+    ]
+    assert set(payload[0]) == {
+        "id",
+        "nombre",
+        "marca",
+        "categoria",
+        "precioVentaCentavos",
+        "imagenUrl",
+    }
+    assert "cantidad" not in payload[0]
+    assert "stockMinimo" not in payload[0]
+    assert "precioCompraCentavos" not in payload[0]
+    assert "utilidadCentavos" not in payload[0]
+    assert "margenPorcentaje" not in payload[0]
+
+
 def test_cors_allows_localhost_and_loopback_frontend_origins() -> None:
     client, _repo = make_client("Administrador")
 
-    for origin in ("http://localhost:5173", "http://127.0.0.1:5173"):
+    for origin in (
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "http://localhost:5174",
+        "http://127.0.0.1:5174",
+    ):
         response = client.options(
             "/api/v1/productos",
             headers={

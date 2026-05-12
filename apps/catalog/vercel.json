@@ -1,0 +1,11 @@
+{
+  "buildCommand": "cd ../.. && npm run build:catalog",
+  "outputDirectory": "dist",
+  "installCommand": "cd ../.. && npm install",
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}

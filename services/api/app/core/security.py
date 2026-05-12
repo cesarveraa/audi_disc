@@ -14,7 +14,8 @@ SELLER_ROLE = "Vendedor"
 ALLOWED_ROLES = {ADMIN_ROLE, SELLER_ROLE}
 
 bearer_scheme = HTTPBearer(auto_error=False)
-PUBLIC_PATH_PREFIXES = ("/health", "/docs", "/redoc", "/openapi.json")
+PUBLIC_PATHS = ("/", "/health", "/openapi.json")
+PUBLIC_PATH_PREFIXES = ("/docs", "/redoc", "/api/v1/public/")
 
 
 @dataclass(frozen=True)
@@ -71,7 +72,7 @@ def user_from_authorization_header(value: str | None) -> AuthenticatedUser:
 
 
 def is_public_path(path: str) -> bool:
-    return path == "/" or any(path.startswith(prefix) for prefix in PUBLIC_PATH_PREFIXES)
+    return path in PUBLIC_PATHS or any(path.startswith(prefix) for prefix in PUBLIC_PATH_PREFIXES)
 
 
 async def firebase_auth_middleware(request: Request, call_next):

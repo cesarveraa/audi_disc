@@ -18,6 +18,7 @@ const product: ProductPublic = {
   cantidad: 2,
   stockMinimo: 1,
   precioVentaCentavos: 1500,
+  imagenUrl: null,
   estado: true,
   createdAt: null,
   updatedAt: null,
@@ -58,4 +59,3 @@ describe('cart helpers', () => {
     ).toBe(false);
   });
 });
-

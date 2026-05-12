@@ -10,6 +10,7 @@ PUBLIC_PRODUCT_KEYS = {
     "cantidad",
     "stockMinimo",
     "precioVentaCentavos",
+    "imagenUrl",
     "estado",
     "createdAt",
     "updatedAt",
@@ -34,6 +35,7 @@ def normalize_product_doc(product_id: str, data: dict, include_financials: bool)
         "cantidad": int(data.get("cantidad", 0)),
         "stockMinimo": int(data.get("stockMinimo", 0)),
         "precioVentaCentavos": precio_venta,
+        "imagenUrl": data.get("imagenUrl") or data.get("imageUrl"),
         "estado": bool(data.get("estado", True)),
         "createdAt": datetime_to_iso(data.get("createdAt")),
         "updatedAt": datetime_to_iso(data.get("updatedAt")),
@@ -43,6 +45,17 @@ def normalize_product_doc(product_id: str, data: dict, include_financials: bool)
         product["utilidadCentavos"] = precio_venta - precio_compra
         product["margenPorcentaje"] = calculate_margin_percent(precio_compra, precio_venta)
     return product
+
+
+def normalize_catalog_product_doc(data: dict) -> dict:
+    return {
+        "id": data.get("id", ""),
+        "nombre": data.get("nombre", ""),
+        "marca": data.get("marca"),
+        "categoria": data.get("categoria"),
+        "precioVentaCentavos": int(data.get("precioVentaCentavos", 0)),
+        "imagenUrl": data.get("imagenUrl") or data.get("imageUrl"),
+    }
 
 
 def normalize_customer_doc(customer_id: str, data: dict) -> dict:

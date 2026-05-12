@@ -1,0 +1,29 @@
+{
+  "name": "@audidisc/catalog",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 0.0.0.0 --port 5174",
+    "build": "node ./scripts/build-shared-if-present.mjs && tsc -p tsconfig.json --noEmit && node ./scripts/generate-seo-assets.mjs --public && vite build && node ./scripts/generate-seo-assets.mjs --dist",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@audidisc/shared": "file:../../packages/shared",
+    "lucide-react": "^0.468.0",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1",
+    "react-helmet-async": "^3.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.5",
+    "@types/react": "^19.0.7",
+    "@types/react-dom": "^19.0.3",
+    "@vitejs/plugin-react": "^4.3.4",
+    "autoprefixer": "^10.4.20",
+    "postcss": "8.5.14",
+    "tailwindcss": "^3.4.17",
+    "typescript": "^5.8.3",
+    "vite": "^6.0.7"
+  }
+}

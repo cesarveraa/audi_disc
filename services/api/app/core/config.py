@@ -27,7 +27,12 @@ class Settings(BaseSettings):
 
     @property
     def cors_origin_list(self) -> list[str]:
-        required_origins = {"http://localhost:5173", "http://127.0.0.1:5173"}
+        required_origins = {
+            "http://localhost:5173",
+            "http://127.0.0.1:5173",
+            "http://localhost:5174",
+            "http://127.0.0.1:5174",
+        }
         configured_origins = {origin.strip() for origin in self.cors_origins.split(",") if origin.strip()}
         return sorted(configured_origins | required_origins)
 
