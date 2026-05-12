@@ -12,6 +12,8 @@ export default defineConfig({
   plugins: [react()],
   build: {
     cssCodeSplit: true,
+    outDir: path.resolve(monorepoRoot, 'dist'),
+    emptyOutDir: true,
     rollupOptions: {
       output: {
         manualChunks: {
