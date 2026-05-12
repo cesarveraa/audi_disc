@@ -35,6 +35,12 @@
       ],
       "@infra/*": [
         "src/infra/*"
+      ],
+      "@audidisc/shared": [
+        "../../packages/shared/src/index.ts"
+      ],
+      "@audidisc/shared/*": [
+        "../../packages/shared/src/*"
       ]
     }
   },
