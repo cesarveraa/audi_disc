@@ -8,7 +8,7 @@
     "apps/mobile"
   ],
   "scripts": {
-    "build": "npm run build -w @audidisc/shared && npm run build -w @audidisc/web",
+    "build": "npm run build --workspace @audidisc/shared && npm run build --workspace @audidisc/web",
     "test": "npm run test --workspaces --if-present",
     "typecheck": "npm run typecheck --workspaces --if-present"
   },
