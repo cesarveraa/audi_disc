@@ -29,6 +29,7 @@ export default defineConfig({
       '@core': path.resolve(__dirname, './src/core'),
       '@domain': path.resolve(__dirname, './src/domain'),
       '@infra': path.resolve(__dirname, './src/infra'),
+      '@audidisc/shared': path.resolve(monorepoRoot, './packages/shared/src/index.ts'),
     },
   },
   server: {
