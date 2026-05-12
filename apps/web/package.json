@@ -10,7 +10,6 @@
     "typecheck": "tsc -b --pretty false"
   },
   "dependencies": {
-    "@audidisc/shared": "file:../../packages/shared",
     "firebase": "^12.13.0",
     "jspdf": "^4.2.1",
     "lucide-react": "^0.468.0",

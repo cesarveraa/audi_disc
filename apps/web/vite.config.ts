@@ -1,10 +1,13 @@
+import { existsSync } from 'node:fs';
 import path from 'node:path';
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
 
 const webRoot = __dirname;
 const monorepoRoot = path.resolve(webRoot, '../..');
-const hasMonorepoShared = path.basename(webRoot) === 'web' && path.basename(path.dirname(webRoot)) === 'apps';
+const monorepoSharedEntry = path.resolve(monorepoRoot, './packages/shared/src/index.ts');
+const localSharedEntry = path.resolve(webRoot, './src/shared/index.ts');
+const hasMonorepoShared = existsSync(monorepoSharedEntry);
 const projectRoot = hasMonorepoShared ? monorepoRoot : webRoot;
 const alias = {
   '@app': path.resolve(webRoot, './src/app'),
@@ -12,11 +15,7 @@ const alias = {
   '@core': path.resolve(webRoot, './src/core'),
   '@domain': path.resolve(webRoot, './src/domain'),
   '@infra': path.resolve(webRoot, './src/infra'),
-  ...(hasMonorepoShared
-    ? {
-        '@audidisc/shared': path.resolve(monorepoRoot, './packages/shared/src/index.ts'),
-      }
-    : {}),
+  '@audidisc/shared': hasMonorepoShared ? monorepoSharedEntry : localSharedEntry,
 };
 
 export default defineConfig({

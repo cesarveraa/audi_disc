@@ -35,15 +35,16 @@
       ],
       "@infra/*": [
         "src/infra/*"
+      ],
+      "@audidisc/shared": [
+        "src/shared/index.ts"
+      ],
+      "@audidisc/shared/*": [
+        "src/shared/*"
       ]
     }
   },
   "include": [
     "src"
-  ],
-  "references": [
-    {
-      "path": "../../packages/shared"
-    }
   ]
 }
