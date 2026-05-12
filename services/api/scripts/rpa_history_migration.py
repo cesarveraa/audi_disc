@@ -17,13 +17,54 @@ from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from pathlib import Path
 from typing import Any
 
-import pyautogui
-import pyperclip
-from PIL import ImageEnhance, ImageFilter, ImageOps
+pyautogui: Any | None = None
+pyperclip: Any | None = None
+ImageEnhance: Any | None = None
+ImageFilter: Any | None = None
+ImageOps: Any | None = None
+BitmapDecoder: Any | None = None
+OcrEngine: Any | None = None
+FileAccessMode: Any | None = None
+StorageFile: Any | None = None
+if sys.platform == "win32":
+    try:
+        import pyautogui
+        import pyperclip
+        from PIL import ImageEnhance, ImageFilter, ImageOps
+        from winsdk.windows.graphics.imaging import BitmapDecoder
+        from winsdk.windows.media.ocr import OcrEngine
+        from winsdk.windows.storage import FileAccessMode, StorageFile
+    except ModuleNotFoundError:
+        pyautogui = None
+        pyperclip = None
+        ImageEnhance = None
+        ImageFilter = None
+        ImageOps = None
+        BitmapDecoder = None
+        OcrEngine = None
+        FileAccessMode = None
+        StorageFile = None
 from google.cloud import firestore
-from winsdk.windows.graphics.imaging import BitmapDecoder
-from winsdk.windows.media.ocr import OcrEngine
-from winsdk.windows.storage import FileAccessMode, StorageFile
+
+
+def require_windows_rpa() -> None:
+    if sys.platform != "win32":
+        raise RuntimeError("La migracion RPA/OCR de FileMaker solo puede ejecutarse en Windows.")
+    missing = [
+        name
+        for name, module in (
+            ("pyautogui", pyautogui),
+            ("pyperclip", pyperclip),
+            ("Pillow", ImageEnhance),
+            ("winsdk", OcrEngine),
+        )
+        if module is None
+    ]
+    if missing:
+        raise RuntimeError(
+            "Faltan dependencias RPA/OCR de Windows "
+            f"({', '.join(missing)}). Instala con: python -m pip install -r services/api/requirements.txt"
+        )
 
 ROOT = Path(__file__).resolve().parents[1]
 os.chdir(ROOT)
@@ -33,8 +74,9 @@ if str(ROOT) not in sys.path:
 from app.core.firebase import get_firestore_client  # noqa: E402
 
 
-pyautogui.FAILSAFE = True
-pyautogui.PAUSE = 0.08
+if pyautogui is not None:
+    pyautogui.FAILSAFE = True
+    pyautogui.PAUSE = 0.08
 
 DESIGN_WIDTH = 1920
 DESIGN_HEIGHT = 1032
@@ -614,6 +656,7 @@ class FirestoreContextResolver:
 
 class FileMakerRpa:
     def __init__(self, args: argparse.Namespace, output_dir: Path) -> None:
+        require_windows_rpa()
         self.args = args
         self.output_dir = output_dir
         self.geometry = self._find_window(args.window_title)
@@ -1666,6 +1709,7 @@ def parse_args() -> argparse.Namespace:
 
 
 def main() -> None:
+    require_windows_rpa()
     args = parse_args()
     if args.autonomous:
         args.commit = True

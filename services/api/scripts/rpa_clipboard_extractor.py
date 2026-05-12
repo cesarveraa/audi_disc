@@ -15,8 +15,33 @@ from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from pathlib import Path
 from typing import Any
 
-import pyautogui
-import pyperclip
+pyautogui: Any | None = None
+pyperclip: Any | None = None
+if sys.platform == "win32":
+    try:
+        import pyautogui
+        import pyperclip
+    except ModuleNotFoundError:
+        pyautogui = None
+        pyperclip = None
+
+
+def require_windows_rpa() -> None:
+    if sys.platform != "win32":
+        raise RuntimeError("El extractor RPA de FileMaker solo puede ejecutarse en Windows.")
+    missing = [
+        name
+        for name, module in (
+            ("pyautogui", pyautogui),
+            ("pyperclip", pyperclip),
+        )
+        if module is None
+    ]
+    if missing:
+        raise RuntimeError(
+            "Faltan dependencias RPA de Windows "
+            f"({', '.join(missing)}). Instala con: python -m pip install -r services/api/requirements.txt"
+        )
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -27,8 +52,9 @@ if str(ROOT) not in sys.path:
 from app.core.firebase import get_firestore_client  # noqa: E402
 
 
-pyautogui.FAILSAFE = True
-pyautogui.PAUSE = 0.3
+if pyautogui is not None:
+    pyautogui.FAILSAFE = True
+    pyautogui.PAUSE = 0.3
 
 DESIGN_WIDTH = 1920
 DESIGN_HEIGHT = 1032
@@ -373,6 +399,7 @@ class MigrationState:
 
 class ClipboardFileMakerRpa:
     def __init__(self, args: argparse.Namespace) -> None:
+        require_windows_rpa()
         self.args = args
         self.window_title = args.window_title
         self.window = self.find_main_window()
@@ -715,6 +742,7 @@ def run_probe(rpa: ClipboardFileMakerRpa, output_dir: Path, *, move_cursor: bool
 
 
 def main() -> None:
+    require_windows_rpa()
     args = parse_args()
     args.output_dir = args.output_dir.resolve()
     args.state_db = args.state_db.resolve()

@@ -15,13 +15,22 @@ from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from pathlib import Path
 from typing import Any, Iterable
 
-try:
-    import uiautomation as auto
-except ModuleNotFoundError as exc:  # pragma: no cover - exercised by runtime environment
-    raise RuntimeError(
-        "Falta la libreria uiautomation. Instala dependencias con: "
-        "python -m pip install -r services/api/requirements.txt"
-    ) from exc
+auto: Any | None = None
+if sys.platform == "win32":
+    try:
+        import uiautomation as auto
+    except ModuleNotFoundError:
+        auto = None
+
+
+def require_windows_uia() -> None:
+    if sys.platform != "win32":
+        raise RuntimeError("El extractor UIA de FileMaker solo puede ejecutarse en Windows.")
+    if auto is None:
+        raise RuntimeError(
+            "Falta la libreria uiautomation. Instala dependencias con: "
+            "python -m pip install -r services/api/requirements.txt"
+        )
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -379,6 +388,7 @@ class MigrationState:
 
 class UiaFileMakerExtractor:
     def __init__(self, args: argparse.Namespace) -> None:
+        require_windows_uia()
         self.args = args
         self.window = self.find_window()
         self.window.SetActive()
@@ -770,6 +780,7 @@ def parse_args() -> argparse.Namespace:
 
 
 def main() -> None:
+    require_windows_uia()
     args = parse_args()
     args.output_dir = args.output_dir.resolve()
     args.state_db = args.state_db.resolve()
