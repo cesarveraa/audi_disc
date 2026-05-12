@@ -3,9 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "workspaces": [
-    "packages/shared",
-    "apps/web",
-    "apps/mobile"
+    "packages/*",
+    "apps/*"
   ],
   "scripts": {
     "build": "npm run build --workspace @audidisc/shared && npm run build --workspace @audidisc/web",
