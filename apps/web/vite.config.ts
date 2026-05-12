@@ -3,16 +3,30 @@ import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
 
 const webRoot = __dirname;
-const monorepoRoot = path.resolve(__dirname, '../..');
+const monorepoRoot = path.resolve(webRoot, '../..');
+const hasMonorepoShared = path.basename(webRoot) === 'web' && path.basename(path.dirname(webRoot)) === 'apps';
+const projectRoot = hasMonorepoShared ? monorepoRoot : webRoot;
+const alias = {
+  '@app': path.resolve(webRoot, './src/app'),
+  '@features': path.resolve(webRoot, './src/features'),
+  '@core': path.resolve(webRoot, './src/core'),
+  '@domain': path.resolve(webRoot, './src/domain'),
+  '@infra': path.resolve(webRoot, './src/infra'),
+  ...(hasMonorepoShared
+    ? {
+        '@audidisc/shared': path.resolve(monorepoRoot, './packages/shared/src/index.ts'),
+      }
+    : {}),
+};
 
 export default defineConfig({
   root: webRoot,
   envDir: webRoot,
-  cacheDir: path.resolve(monorepoRoot, 'node_modules/.vite/apps-web'),
+  cacheDir: path.resolve(projectRoot, 'node_modules/.vite/apps-web'),
   plugins: [react()],
   build: {
     cssCodeSplit: true,
-    outDir: path.resolve(monorepoRoot, 'dist'),
+    outDir: path.resolve(projectRoot, 'dist'),
     emptyOutDir: true,
     rollupOptions: {
       output: {
@@ -25,18 +39,11 @@ export default defineConfig({
     },
   },
   resolve: {
-    alias: {
-      '@app': path.resolve(__dirname, './src/app'),
-      '@features': path.resolve(__dirname, './src/features'),
-      '@core': path.resolve(__dirname, './src/core'),
-      '@domain': path.resolve(__dirname, './src/domain'),
-      '@infra': path.resolve(__dirname, './src/infra'),
-      '@audidisc/shared': path.resolve(monorepoRoot, './packages/shared/src/index.ts'),
-    },
+    alias,
   },
   server: {
     fs: {
-      allow: [webRoot, monorepoRoot],
+      allow: [webRoot, projectRoot],
     },
   },
   test: {

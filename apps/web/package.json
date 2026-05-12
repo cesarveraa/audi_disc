@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite --host 0.0.0.0",
-    "build": "npm --prefix ../.. run build --workspace @audidisc/shared && vite build",
+    "build": "node ./scripts/build-shared-if-present.mjs && vite build",
     "test": "vitest run",
     "typecheck": "tsc -b --pretty false"
   },
