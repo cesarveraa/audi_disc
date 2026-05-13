@@ -143,7 +143,8 @@ class FirestoreInventoryRepository:
                 "has_more": offset + len(items) < total_count,
             }
 
-        ref = ref.where("cantidad", ">", 0).order_by("cantidad")
+        from google.cloud.firestore_v1.base_query import FieldFilter
+        ref = ref.where(filter=FieldFilter("cantidad", ">", 0)).order_by("cantidad")
         total_count = self._count_query(ref)
         snapshots = ref.offset(offset).limit(limit).stream()
         items = [
