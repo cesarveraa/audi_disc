@@ -24,6 +24,12 @@ export interface CatalogProduct {
   imagenUrl: string | null;
 }
 
+export interface CatalogProductsPage {
+  items: CatalogProduct[];
+  total_count: number;
+  has_more: boolean;
+}
+
 export interface ProductAdmin extends ProductPublic {
   precioCompraCentavos: number;
   utilidadCentavos: number;

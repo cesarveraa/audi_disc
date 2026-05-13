@@ -29,6 +29,24 @@ const business = {
   instagramUrl: process.env.VITE_BUSINESS_INSTAGRAM_URL || 'https://instagram.com/audidisc',
 };
 
+const faqEntries = [
+  {
+    question: 'Tienen garantia?',
+    answer:
+      'Si. Los productos originales vendidos por Audi Disc cuentan con respaldo local y atencion directa en Sucre.',
+  },
+  {
+    question: 'Hacen entregas a domicilio en Sucre?',
+    answer:
+      'Si. Puedes consultar por WhatsApp la zona de entrega, horarios disponibles y coordinacion para recibir tu producto.',
+  },
+  {
+    question: 'Que marcas manejan?',
+    answer:
+      'Trabajamos con marcas como JBL, Sony, Ewtto, Casio y otras lineas de audio, electronica y accesorios.',
+  },
+];
+
 const products = await fetchProducts();
 
 if (args.has('--public')) {
@@ -101,24 +119,41 @@ async function fetchProducts() {
     return [];
   }
 
-  try {
-    const response = await fetch(`${apiBaseUrl}/public/products`, {
-      headers: { Accept: 'application/json' },
-    });
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
+  const items = [];
+  let page = 1;
+  let hasMore = true;
+
+  while (hasMore && page <= 200) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 8000);
+
+    try {
+      const response = await fetch(`${apiBaseUrl}/public/products?page=${page}&limit=50`, {
+        headers: { Accept: 'application/json' },
+        signal: controller.signal,
+      });
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+      const payload = await response.json();
+      const pageItems = Array.isArray(payload) ? payload : Array.isArray(payload.items) ? payload.items : [];
+      items.push(...pageItems);
+      hasMore = Array.isArray(payload) ? false : Boolean(payload.has_more);
+      page += 1;
+    } catch (error) {
+      console.warn(`[AudiDisc Catalog SEO] No se pudo obtener productos publicos: ${error.message}`);
+      return items;
+    } finally {
+      clearTimeout(timeout);
     }
-    const payload = await response.json();
-    return Array.isArray(payload) ? payload : [];
-  } catch (error) {
-    console.warn(`[AudiDisc Catalog SEO] No se pudo obtener productos publicos: ${error.message}`);
-    return [];
   }
+
+  return items;
 }
 
 async function writePublicSeoAssets(items) {
   await mkdir(publicDir, { recursive: true });
-  const routes = Array.from(new Set(['/', ...items.map(product => productPath(product))]));
+  const routes = Array.from(new Set(['/', '/productos', ...items.map(product => productPath(product))]));
   const now = new Date().toISOString();
   const sitemap = [
     '<?xml version="1.0" encoding="UTF-8"?>',
@@ -128,7 +163,11 @@ async function writePublicSeoAssets(items) {
       `    <loc>${escapeXml(absoluteUrl(route))}</loc>`,
       `    <lastmod>${now}</lastmod>`,
       '    <changefreq>daily</changefreq>',
-      route === '/' ? '    <priority>1.0</priority>' : '    <priority>0.8</priority>',
+      route === '/'
+        ? '    <priority>1.0</priority>'
+        : route === '/productos'
+          ? '    <priority>0.9</priority>'
+          : '    <priority>0.8</priority>',
       '  </url>',
     ].join('\n')),
     '</urlset>',
@@ -158,22 +197,38 @@ async function writeDistHtml(items) {
   await writeFile(
     indexPath,
     injectSeoHead(indexHtml, {
-      title: 'Audi Disc Sucre - Catalogo de electronica, audio y accesorios',
+      title: 'Audi Disc Sucre | Sonido original con garantia real',
       description:
-        'Catalogo publico de Audi Disc Sucre con parlantes, audifonos, accesorios y consumibles disponibles para consulta local por WhatsApp.',
+        'Audi Disc Sucre ofrece audio, electronica y accesorios originales con garantia local en Chuquisaca y consulta directa por WhatsApp.',
       image: absoluteUrl('/audidisc.jpg'),
       canonical: absoluteUrl('/'),
       type: 'website',
-      jsonLd: localBusinessJsonLd(),
+      jsonLd: [localBusinessJsonLd(), faqJsonLd()],
     }),
     'utf8',
   );
 
+  await writeCatalogHtml(indexHtml);
   if (!items.length) {
     return;
   }
 
   await Promise.all(items.map(product => writeSingleProductHtml(indexHtml, product)));
+}
+
+async function writeCatalogHtml(indexHtml) {
+  const catalogDir = path.resolve(distDir, 'productos');
+  const html = injectSeoHead(indexHtml, {
+    title: 'Catalogo tecnico en Sucre | Audi Disc',
+    description:
+      'Busca productos de audio, electronica y accesorios originales en Audi Disc Sucre con filtros por marca y categoria.',
+    image: absoluteUrl('/audidisc.jpg'),
+    canonical: absoluteUrl('/productos'),
+    type: 'website',
+    jsonLd: localBusinessJsonLd(),
+  });
+  await mkdir(catalogDir, { recursive: true });
+  await writeFile(path.resolve(catalogDir, 'index.html'), html, 'utf8');
 }
 
 async function writeSingleProductHtml(indexHtml, product) {
@@ -204,36 +259,43 @@ function injectSeoHead(html, seo) {
     .replace(/<meta\s+name=["']twitter:[^"']+["'][^>]*>/gi, '')
     .replace(/<script\s+type=["']application\/ld\+json["'][\s\S]*?<\/script>/gi, '');
   const head = [
-    `<title>${escapeHtml(seo.title)}</title>`,
-    `<meta name="description" content="${escapeHtml(seo.description)}">`,
-    `<link rel="canonical" href="${escapeHtml(seo.canonical)}">`,
-    `<meta property="og:title" content="${escapeHtml(seo.title)}">`,
-    `<meta property="og:description" content="${escapeHtml(seo.description)}">`,
-    `<meta property="og:type" content="${seo.type}">`,
-    `<meta property="og:url" content="${escapeHtml(seo.canonical)}">`,
-    `<meta property="og:image" content="${escapeHtml(seo.image)}">`,
-    '<meta property="og:image:width" content="1200">',
-    '<meta property="og:image:height" content="630">',
-    '<meta property="og:locale" content="es_BO">',
-    '<meta property="og:site_name" content="Audi Disc Sucre">',
-    '<meta name="twitter:card" content="summary_large_image">',
-    `<meta name="twitter:title" content="${escapeHtml(seo.title)}">`,
-    `<meta name="twitter:description" content="${escapeHtml(seo.description)}">`,
-    `<meta name="twitter:image" content="${escapeHtml(seo.image)}">`,
-    `<script type="application/ld+json">${JSON.stringify(seo.jsonLd)}</script>`,
+    `<title data-rh="true">${escapeHtml(seo.title)}</title>`,
+    `<meta data-rh="true" name="description" content="${escapeHtml(seo.description)}">`,
+    `<link data-rh="true" rel="canonical" href="${escapeHtml(seo.canonical)}">`,
+    `<meta data-rh="true" property="og:title" content="${escapeHtml(seo.title)}">`,
+    `<meta data-rh="true" property="og:description" content="${escapeHtml(seo.description)}">`,
+    `<meta data-rh="true" property="og:type" content="${seo.type}">`,
+    `<meta data-rh="true" property="og:url" content="${escapeHtml(seo.canonical)}">`,
+    `<meta data-rh="true" property="og:image" content="${escapeHtml(seo.image)}">`,
+    '<meta data-rh="true" property="og:image:width" content="1200">',
+    '<meta data-rh="true" property="og:image:height" content="630">',
+    '<meta data-rh="true" property="og:locale" content="es_BO">',
+    '<meta data-rh="true" property="og:site_name" content="Audi Disc Sucre">',
+    '<meta data-rh="true" name="twitter:card" content="summary_large_image">',
+    `<meta data-rh="true" name="twitter:title" content="${escapeHtml(seo.title)}">`,
+    `<meta data-rh="true" name="twitter:description" content="${escapeHtml(seo.description)}">`,
+    `<meta data-rh="true" name="twitter:image" content="${escapeHtml(seo.image)}">`,
+    ...asJsonLdArray(seo.jsonLd).map(item => `<script data-rh="true" type="application/ld+json">${JSON.stringify(item)}</script>`),
   ].join('\n    ');
   return clean.replace(/<head>/i, () => `<head>\n    ${head}`);
 }
 
+function asJsonLdArray(jsonLd) {
+  return Array.isArray(jsonLd) ? jsonLd : jsonLd ? [jsonLd] : [];
+}
+
 function productPath(product) {
-  return `/producto/${createCatalogProductSlug(product, business.city)}`;
+  return `/productos/${createCatalogProductSlug(product, business.city)}`;
+}
+
+function productDisplayName(product) {
+  const name = String(product.nombre || '').trim();
+  const brand = product.marca ? String(product.marca).trim() : '';
+  return brand && !slugify(name).includes(slugify(brand)) ? `${name} ${brand}` : name;
 }
 
 function productSeoTitle(product) {
-  const name = String(product.nombre || '').trim();
-  const brand = product.marca ? String(product.marca).trim() : '';
-  const productName = brand && !slugify(name).includes(slugify(brand)) ? `${name} ${brand}` : name;
-  return `${productName} - Stock en ${business.city}, Bolivia`;
+  return `${productDisplayName(product)} en ${business.city} | Audi Disc`;
 }
 
 function productDescription(product) {
@@ -278,7 +340,7 @@ function productJsonLd(product) {
   return {
     '@context': 'https://schema.org',
     '@type': 'Product',
-    name: productSeoTitle(product).replace(` - Stock en ${business.city}, Bolivia`, ''),
+    name: productDisplayName(product),
     image: [absoluteUrl(imageForProduct(product))],
     description: productDescription(product),
     brand: product.marca ? { '@type': 'Brand', name: product.marca } : undefined,
@@ -311,7 +373,7 @@ function productJsonLd(product) {
 function localBusinessJsonLd() {
   return {
     '@context': 'https://schema.org',
-    '@type': 'ElectronicsStore',
+    '@type': ['LocalBusiness', 'ElectronicsStore'],
     '@id': siteUrl,
     name: business.name,
     image: absoluteUrl('/audidisc.jpg'),
@@ -341,6 +403,21 @@ function localBusinessJsonLd() {
       },
     ],
     sameAs: [business.facebookUrl, business.instagramUrl],
+  };
+}
+
+function faqJsonLd() {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: faqEntries.map(entry => ({
+      '@type': 'Question',
+      name: entry.question,
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: entry.answer,
+      },
+    })),
   };
 }
 

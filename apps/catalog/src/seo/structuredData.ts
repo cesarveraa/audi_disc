@@ -2,12 +2,17 @@ import type { CatalogProduct } from '@audidisc/shared';
 import { formatBsFromCentavos } from '@audidisc/shared';
 
 import { absoluteUrl, business, siteUrl } from '../config/business';
-import { imageForProduct, productDescription, productPath, productSeoTitle } from '../utils/catalog';
+import { imageForProduct, productDescription, productDisplayName, productPath } from '../utils/catalog';
+
+export type FAQEntry = {
+  question: string;
+  answer: string;
+};
 
 export function localBusinessJsonLd() {
   return {
     '@context': 'https://schema.org',
-    '@type': 'ElectronicsStore',
+    '@type': ['LocalBusiness', 'ElectronicsStore'],
     '@id': siteUrl,
     name: business.name,
     image: absoluteUrl('/audidisc.jpg'),
@@ -40,12 +45,28 @@ export function localBusinessJsonLd() {
   };
 }
 
+export function faqJsonLd(entries: FAQEntry[]) {
+  // Vite cache invalidation
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: entries.map(entry => ({
+      '@type': 'Question',
+      name: entry.question,
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: entry.answer,
+      },
+    })),
+  };
+}
+
 export function productJsonLd(product: CatalogProduct) {
   const url = absoluteUrl(productPath(product));
   return {
     '@context': 'https://schema.org',
     '@type': 'Product',
-    name: productSeoTitle(product).replace(` - Stock en ${business.city}, Bolivia`, ''),
+    name: productDisplayName(product),
     image: [absoluteUrl(imageForProduct(product))],
     description: productDescription(product),
     brand: product.marca

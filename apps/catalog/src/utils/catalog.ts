@@ -6,6 +6,9 @@ import { business } from '../config/business';
 export const heroImage =
   'https://images.unsplash.com/photo-1545454675-3531b543be5d?auto=format&fit=crop&w=1800&q=88&fm=webp';
 
+export const storeImage =
+  'https://images.unsplash.com/photo-1556740738-b6a63e27c4df?auto=format&fit=crop&w=1400&q=86&fm=webp';
+
 const fallbackImages = {
   audio: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=1200&q=86&fm=webp',
   cables: 'https://images.unsplash.com/photo-1618384887929-16ec33fab9ef?auto=format&fit=crop&w=1200&q=86&fm=webp',
@@ -56,22 +59,25 @@ export function productSlug(product: CatalogProduct) {
 }
 
 export function productPath(product: CatalogProduct) {
-  return `/producto/${productSlug(product)}`;
+  return `/productos/${productSlug(product)}`;
 }
 
-export function productSeoTitle(product: CatalogProduct) {
+export function productDisplayName(product: CatalogProduct) {
   const name = product.nombre.trim();
   const brand = product.marca?.trim();
   const nameHasBrand = brand ? normalize(name).includes(normalize(brand)) : true;
-  const productName = [name, nameHasBrand ? null : brand].filter(Boolean).join(' ');
-  return `${productName} - Stock en ${business.city}, Bolivia`;
+  return [name, nameHasBrand ? null : brand].filter(Boolean).join(' ');
+}
+
+export function productSeoTitle(product: CatalogProduct) {
+  return `${productDisplayName(product)} en ${business.city} | Audi Disc`;
 }
 
 export function productDescription(product: CatalogProduct) {
   const parts = [
     product.nombre,
     product.marca ? `marca ${product.marca}` : null,
-    product.categoria ? `categoria ${product.categoria}` : null,
+    product.categoria ? `categoría ${product.categoria}` : null,
   ].filter(Boolean);
-  return `${parts.join(', ')} disponible para consulta local en Audi Disc ${business.city}, ${business.region}. Pregunta por WhatsApp por disponibilidad, garantia y entrega inmediata.`;
+  return `${parts.join(', ')} disponible para consulta local en Audi Disc ${business.city}, ${business.region}. Pregunta por WhatsApp por disponibilidad, garantía y entrega inmediata.`;
 }

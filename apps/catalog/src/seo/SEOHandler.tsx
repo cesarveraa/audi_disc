@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { Helmet } from 'react-helmet-async';
 
 import { absoluteUrl } from '../config/business';
@@ -22,6 +23,17 @@ export function SEOHandler({
   const canonicalUrl = absoluteUrl(canonical);
   const imageUrl = absoluteUrl(image);
   const structuredData = Array.isArray(jsonLd) ? jsonLd : jsonLd ? [jsonLd] : [];
+
+  useEffect(() => {
+    const links = Array.from(document.head.querySelectorAll<HTMLLinkElement>('link[rel="canonical"]'));
+    const canonicalLink = links[0] ?? document.createElement('link');
+    canonicalLink.setAttribute('rel', 'canonical');
+    canonicalLink.setAttribute('href', canonicalUrl);
+    if (!canonicalLink.parentElement) {
+      document.head.appendChild(canonicalLink);
+    }
+    links.slice(1).forEach(link => link.remove());
+  }, [canonicalUrl]);
 
   return (
     <Helmet>

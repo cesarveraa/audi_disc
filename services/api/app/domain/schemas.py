@@ -84,6 +84,12 @@ class CatalogProductResponse(StrictModel):
     imagenUrl: str | None
 
 
+class CatalogProductsPageResponse(StrictModel):
+    items: list[CatalogProductResponse]
+    total_count: int
+    has_more: bool
+
+
 class Producto(ProductAdminResponse):
     pass
 

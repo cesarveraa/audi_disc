@@ -4,10 +4,10 @@
 
 @layer base {
   :root {
-    color: #111318;
-    background: #f6f5f2;
+    color: #e8e8e8;
+    background: #0a0a0a;
     font-family:
-      Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+      Inter, Montserrat, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
       sans-serif;
     font-synthesis: none;
     text-rendering: geometricPrecision;
@@ -25,6 +25,7 @@
     margin: 0;
     min-width: 320px;
     min-height: 100vh;
+    background: #0a0a0a;
   }
 
   button,
@@ -43,5 +44,9 @@
 
   img {
     max-width: 100%;
+  }
+
+  select {
+    color-scheme: dark;
   }
 }

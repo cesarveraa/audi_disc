@@ -10,10 +10,12 @@
   },
   "dependencies": {
     "@audidisc/shared": "file:../../packages/shared",
+    "framer-motion": "^12.38.0",
     "lucide-react": "^0.468.0",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
-    "react-helmet-async": "^3.0.0"
+    "react-helmet-async": "^3.0.0",
+    "react-router-dom": "^7.15.0"
   },
   "devDependencies": {
     "@types/node": "^22.10.5",

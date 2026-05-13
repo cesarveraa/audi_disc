@@ -16,6 +16,16 @@ class InventoryRepository(Protocol):
     def list_products(self, estado: bool | None, query: str | None, include_financials: bool) -> list[dict]:
         ...
 
+    def list_catalog_products(
+        self,
+        page: int,
+        limit: int,
+        query: str | None,
+        marca: str | None,
+        categoria: str | None,
+    ) -> dict:
+        ...
+
     def create_product(self, payload: ProductCreate, user: AuthenticatedUser, include_financials: bool) -> dict:
         ...
 

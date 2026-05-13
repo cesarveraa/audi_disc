@@ -102,6 +102,68 @@ class FirestoreInventoryRepository:
             products.append(normalize_product_doc(snapshot.id, data, include_financials))
         return products
 
+    def list_catalog_products(
+        self,
+        page: int,
+        limit: int,
+        query: str | None,
+        marca: str | None,
+        categoria: str | None,
+    ) -> dict:
+        page = max(page, 1)
+        limit = max(min(limit, 50), 1)
+        offset = (page - 1) * limit
+        normalized_query = _normalize_query(query)
+        ref = self.products.where("estado", "==", True)
+
+        if marca:
+            ref = ref.where("marca", "==", marca.strip())
+        if categoria:
+            ref = ref.where("categoria", "==", categoria.strip())
+
+        if normalized_query:
+            filtered = []
+            for snapshot in ref.stream():
+                data = snapshot.to_dict() or {}
+                if int(data.get("cantidad", 0)) <= 0:
+                    continue
+                haystack = " ".join(
+                    str(data.get(field) or "")
+                    for field in ("nombre", "marca", "sku", "categoria")
+                ).casefold()
+                if normalized_query not in haystack:
+                    continue
+                filtered.append(normalize_product_doc(snapshot.id, data, False))
+
+            total_count = len(filtered)
+            items = filtered[offset:offset + limit]
+            return {
+                "items": items,
+                "total_count": total_count,
+                "has_more": offset + len(items) < total_count,
+            }
+
+        ref = ref.where("cantidad", ">", 0).order_by("cantidad")
+        total_count = self._count_query(ref)
+        snapshots = ref.offset(offset).limit(limit).stream()
+        items = [
+            normalize_product_doc(snapshot.id, snapshot.to_dict() or {}, False)
+            for snapshot in snapshots
+        ]
+        return {
+            "items": items,
+            "total_count": total_count,
+            "has_more": offset + len(items) < total_count,
+        }
+
+    @staticmethod
+    def _count_query(query) -> int:
+        try:
+            results = query.count().get()
+            return int(results[0][0].value)
+        except Exception:
+            return sum(1 for _snapshot in query.stream())
+
     def create_product(self, payload: ProductCreate, user: AuthenticatedUser, include_financials: bool) -> dict:
         now = firestore.SERVER_TIMESTAMP
         doc_ref = self.products.document()

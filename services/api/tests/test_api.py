@@ -66,6 +66,42 @@ class InMemoryInventoryRepository:
             output.append(normalize_product_doc(product_id, deepcopy(product), include_financials))
         return output
 
+    def list_catalog_products(
+        self,
+        page: int,
+        limit: int,
+        query: str | None,
+        marca: str | None,
+        categoria: str | None,
+    ) -> dict:
+        normalized = (query or "").casefold().strip()
+        normalized_brand = (marca or "").casefold().strip()
+        normalized_category = (categoria or "").casefold().strip()
+        output = []
+        for product_id, product in self.products.items():
+            if not product["estado"] or int(product.get("cantidad", 0)) <= 0:
+                continue
+            if normalized_brand and (product.get("marca") or "").casefold().strip() != normalized_brand:
+                continue
+            if normalized_category and (product.get("categoria") or "").casefold().strip() != normalized_category:
+                continue
+            if normalized:
+                haystack = " ".join(
+                    str(product.get(field) or "")
+                    for field in ("nombre", "marca", "sku", "categoria")
+                ).casefold()
+                if normalized not in haystack:
+                    continue
+            output.append(normalize_product_doc(product_id, deepcopy(product), False))
+
+        offset = (page - 1) * limit
+        items = output[offset:offset + limit]
+        return {
+            "items": items,
+            "total_count": len(output),
+            "has_more": offset + len(items) < len(output),
+        }
+
     def create_product(self, payload: ProductCreate, user: AuthenticatedUser, include_financials: bool) -> dict:
         product_id = f"p{len(self.products) + 1}"
         self.products[product_id] = {
@@ -363,17 +399,21 @@ def test_public_catalog_products_do_not_require_auth_and_hide_sensitive_fields()
 
     assert response.status_code == 200
     payload = response.json()
-    assert payload == [
-        {
-            "id": "p1",
-            "nombre": "Audifonos Pro",
-            "marca": "Sony",
-            "categoria": "Audio",
-            "precioVentaCentavos": 1500,
-            "imagenUrl": "https://cdn.audidisc.local/audifonos-pro.webp",
-        }
-    ]
-    assert set(payload[0]) == {
+    assert payload == {
+        "items": [
+            {
+                "id": "p1",
+                "nombre": "Audifonos Pro",
+                "marca": "Sony",
+                "categoria": "Audio",
+                "precioVentaCentavos": 1500,
+                "imagenUrl": "https://cdn.audidisc.local/audifonos-pro.webp",
+            }
+        ],
+        "total_count": 1,
+        "has_more": False,
+    }
+    assert set(payload["items"][0]) == {
         "id",
         "nombre",
         "marca",
@@ -381,11 +421,41 @@ def test_public_catalog_products_do_not_require_auth_and_hide_sensitive_fields()
         "precioVentaCentavos",
         "imagenUrl",
     }
-    assert "cantidad" not in payload[0]
-    assert "stockMinimo" not in payload[0]
-    assert "precioCompraCentavos" not in payload[0]
-    assert "utilidadCentavos" not in payload[0]
-    assert "margenPorcentaje" not in payload[0]
+    assert "cantidad" not in payload["items"][0]
+    assert "stockMinimo" not in payload["items"][0]
+    assert "precioCompraCentavos" not in payload["items"][0]
+    assert "utilidadCentavos" not in payload["items"][0]
+    assert "margenPorcentaje" not in payload["items"][0]
+
+
+def test_public_catalog_products_paginate() -> None:
+    repo = InMemoryInventoryRepository()
+    repo.products["p3"] = {
+        "nombre": "Parlante JBL",
+        "marca": "JBL",
+        "sku": "JBL-001",
+        "categoria": "Audio",
+        "cantidad": 2,
+        "stockMinimo": 1,
+        "precioCompraCentavos": 5000,
+        "precioVentaCentavos": 8000,
+        "estado": True,
+        "createdAt": "2026-05-08T08:00:00",
+        "updatedAt": "2026-05-08T08:00:00",
+    }
+    app = create_app(repo)
+    client = TestClient(app)
+
+    first_page = client.get("/api/v1/public/products?page=1&limit=1")
+    second_page = client.get("/api/v1/public/products?page=2&limit=1")
+
+    assert first_page.status_code == 200
+    assert second_page.status_code == 200
+    assert first_page.json()["total_count"] == 2
+    assert first_page.json()["has_more"] is True
+    assert len(first_page.json()["items"]) == 1
+    assert second_page.json()["has_more"] is False
+    assert len(second_page.json()["items"]) == 1
 
 
 def test_cors_allows_localhost_and_loopback_frontend_origins() -> None:
