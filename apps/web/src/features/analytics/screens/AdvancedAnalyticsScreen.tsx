@@ -1,14 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ArrowLeft,
-  BarChart3,
   Boxes,
-  CreditCard,
-  History,
-  LayoutDashboard,
-  LogOut,
   RefreshCw,
-  ShieldCheck,
   TrendingUp,
 } from 'lucide-react';
 import {
@@ -29,6 +23,7 @@ import type { AnalyticsDashboard, ParetoProductMetric } from '@audidisc/shared';
 import { formatBsFromCentavos } from '@audidisc/shared';
 
 import { useRequiredAuth } from '@app/providers/AuthProvider';
+import { AppSidebar } from '@app/navigation/AppSidebar';
 import { AppButton } from '@core/ui/AppButton';
 import { fetchAnalyticsDashboard } from '@features/analytics/services/analyticsService';
 
@@ -133,7 +128,7 @@ function EmptyState({ children }: { children: string }) {
 }
 
 export default function AdvancedAnalyticsScreen() {
-  const { idToken, logout, user } = useRequiredAuth();
+  const { idToken, isAdmin, logout, user } = useRequiredAuth();
   const [dashboard, setDashboard] = useState<AnalyticsDashboard | null>(null);
   const [isLoading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -185,44 +180,7 @@ export default function AdvancedAnalyticsScreen() {
   return (
     <main className="min-h-screen bg-[#0A0A0A] text-white">
       <div className="mx-auto grid min-h-screen max-w-[1680px] grid-cols-1 gap-0 lg:grid-cols-[292px_minmax(0,1fr)]">
-        <aside className="z-20 border-b border-white/10 bg-white/[0.04] px-4 py-4 shadow-sm backdrop-blur-2xl lg:sticky lg:top-0 lg:h-screen lg:border-b-0 lg:border-r lg:px-5 lg:py-6">
-          <div className="rounded-panel border border-white/10 bg-white/[0.06] p-4 shadow-sm">
-            <strong className="block text-base font-semibold text-white">Audi Disc</strong>
-            <span className="mt-1 block text-xs font-semibold uppercase tracking-[0.14em] text-white/45">
-              BI / {user.role}
-            </span>
-          </div>
-          <nav className="mt-5 grid gap-2" aria-label="Principal">
-            <a className="flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold text-white/55 transition hover:bg-white/10 hover:text-white" href="/inventario">
-              <LayoutDashboard className="h-4 w-4" />
-              Inventario
-            </a>
-            <a className="flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold text-white/55 transition hover:bg-white/10 hover:text-white" href="/ventas">
-              <CreditCard className="h-4 w-4" />
-              Ventas POS
-            </a>
-            <a className="flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold text-white/55 transition hover:bg-white/10 hover:text-white" href="/reportes">
-              <History className="h-4 w-4" />
-              Reportes
-            </a>
-            <a className="flex items-center gap-3 rounded-2xl bg-white px-4 py-3 text-sm font-semibold text-gray-950 shadow-sm" href="/bi">
-              <span className="h-2 w-2 rounded-full bg-audi-red" />
-              <BarChart3 className="h-4 w-4 text-gray-500" />
-              Graficos Avanzados
-            </a>
-            <a className="flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold text-white/55 transition hover:bg-white/10 hover:text-white" href="/auditoria">
-              <ShieldCheck className="h-4 w-4" />
-              Auditoria
-            </a>
-            <button
-              className="flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold text-white/55 transition hover:bg-white/10 hover:text-white"
-              onClick={() => void logout()}
-            >
-              <LogOut className="h-4 w-4" />
-              Salir
-            </button>
-          </nav>
-        </aside>
+        <AppSidebar active="analytics" user={user} isAdmin={isAdmin} onLogout={logout} theme="dark" />
 
         <section className="min-w-0 px-4 py-5 sm:px-6 lg:px-8 lg:py-8">
           <header className="mb-6 flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">

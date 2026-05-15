@@ -301,3 +301,82 @@ def cash_close_pdf(history: dict, user_uid: str) -> bytes:
     elements.append(Paragraph("Detalle registroDias", styles["AudiEyebrow"]))
     elements.append(_table(rows, [1.1 * inch, 1.35 * inch, 0.9 * inch, 1 * inch, 1 * inch, 1 * inch]))
     return _build_pdf(elements)
+
+
+def products_inventory_pdf(products: list[dict], user_uid: str) -> bytes:
+    styles = _styles()
+    elements: list[object] = []
+    logo = _logo(0.55 * inch, 0.55 * inch)
+    if logo:
+        elements.extend([logo, Spacer(1, 0.12 * inch)])
+
+    elements.extend(
+        [
+            Paragraph("AUDI DISC", styles["AudiEyebrow"]),
+            Paragraph("Reporte de Productos", styles["AudiTitle"]),
+            Paragraph(f"Productos exportados: {len(products)} / Generado por {user_uid}", styles["AudiBody"]),
+            Spacer(1, 0.22 * inch),
+        ]
+    )
+
+    rows: list[list[object]] = [["Producto", "Marca", "Categoria", "Stock", "Venta", "Compra", "Utilidad"]]
+    for product in products:
+        rows.append(
+            [
+                Paragraph(str(product.get("nombre", ""))[:72], styles["AudiBody"]),
+                product.get("marca") or "Sin marca",
+                product.get("categoria") or "Sin categoria",
+                int(product.get("cantidad", 0)),
+                format_bs(int(product.get("precioVentaCentavos", 0))),
+                format_bs(int(product.get("precioCompraCentavos", 0))),
+                format_bs(int(product.get("utilidadCentavos", 0))),
+            ]
+        )
+    elements.append(_table(rows, [1.75 * inch, 0.8 * inch, 1 * inch, 0.55 * inch, 0.85 * inch, 0.85 * inch, 0.85 * inch]))
+    return _build_pdf(elements)
+
+
+def sales_history_pdf(history: dict, user_uid: str) -> bytes:
+    styles = _styles()
+    elements: list[object] = []
+    logo = _logo(0.55 * inch, 0.55 * inch)
+    if logo:
+        elements.extend([logo, Spacer(1, 0.12 * inch)])
+
+    elements.extend(
+        [
+            Paragraph("AUDI DISC", styles["AudiEyebrow"]),
+            Paragraph("Reporte de Ventas Registradas", styles["AudiTitle"]),
+            Paragraph(
+                f"Rango {history['dateFrom']} a {history['dateTo']} / Generado por {user_uid}",
+                styles["AudiBody"],
+            ),
+            Spacer(1, 0.22 * inch),
+        ]
+    )
+
+    summary = [
+        ["Total vendido", format_bs(int(history.get("totalCentavos", 0)))],
+        ["Cantidad de ventas", int(history.get("cantidadVentas", 0))],
+        ["Utilidad", format_bs(int(history.get("utilidadCentavos", 0)))],
+        ["Margen", f"{history.get('margenPorcentaje', 0)}%"],
+    ]
+    elements.append(_table(summary, [3.2 * inch, 3.15 * inch]))
+    elements.append(Spacer(1, 0.22 * inch))
+
+    rows: list[list[object]] = [["Venta", "Fecha", "Metodo", "Items", "Total", "Utilidad"]]
+    for sale in history.get("ventas", []):
+        items = sale.get("productos", [])
+        utility = sum(int(item.get("utilidadCentavos", 0)) for item in items)
+        rows.append(
+            [
+                sale.get("id", ""),
+                f"{sale.get('fechaLocal', '')} {sale.get('horaLocal', '')}",
+                sale.get("metodo", ""),
+                len(items),
+                format_bs(int(sale.get("totalCentavos", 0))),
+                format_bs(utility),
+            ]
+        )
+    elements.append(_table(rows, [1.1 * inch, 1.45 * inch, 1 * inch, 0.7 * inch, 1.05 * inch, 1.05 * inch]))
+    return _build_pdf(elements)

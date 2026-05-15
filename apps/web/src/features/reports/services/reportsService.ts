@@ -2,7 +2,7 @@ import type { ReportsDashboard, Sale, SalesHistory, UserRole } from '@audidisc/s
 
 import { apiBlob, apiJson } from '../../../api/client';
 
-async function downloadPdf(blob: Blob, filename: string) {
+async function downloadFile(blob: Blob, filename: string) {
   const url = window.URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = url;
@@ -57,5 +57,45 @@ export async function downloadCashClosePdf(params: {
   const blob = await apiBlob(`/reports/cash-close.pdf?${query.toString()}`, {
     idToken: params.idToken,
   });
-  await downloadPdf(blob, `audi-disc-cierre-${params.dateFrom}-${params.dateTo}.pdf`);
+  await downloadFile(blob, `audi-disc-cierre-${params.dateFrom}-${params.dateTo}.pdf`);
+}
+
+export async function downloadProductsExcel(params: { idToken: string | null }) {
+  const blob = await apiBlob('/reports/products.xlsx', { idToken: params.idToken });
+  await downloadFile(blob, 'audi-disc-productos.xlsx');
+}
+
+export async function downloadProductsPdf(params: { idToken: string | null }) {
+  const blob = await apiBlob('/reports/products.pdf', { idToken: params.idToken });
+  await downloadFile(blob, 'audi-disc-productos.pdf');
+}
+
+export async function downloadSalesExcel(params: {
+  idToken: string | null;
+  dateFrom: string;
+  dateTo: string;
+}) {
+  const query = new URLSearchParams({
+    dateFrom: params.dateFrom,
+    dateTo: params.dateTo,
+  });
+  const blob = await apiBlob(`/reports/sales.xlsx?${query.toString()}`, {
+    idToken: params.idToken,
+  });
+  await downloadFile(blob, `audi-disc-ventas-${params.dateFrom}-${params.dateTo}.xlsx`);
+}
+
+export async function downloadSalesPdf(params: {
+  idToken: string | null;
+  dateFrom: string;
+  dateTo: string;
+}) {
+  const query = new URLSearchParams({
+    dateFrom: params.dateFrom,
+    dateTo: params.dateTo,
+  });
+  const blob = await apiBlob(`/reports/sales.pdf?${query.toString()}`, {
+    idToken: params.idToken,
+  });
+  await downloadFile(blob, `audi-disc-ventas-${params.dateFrom}-${params.dateTo}.pdf`);
 }

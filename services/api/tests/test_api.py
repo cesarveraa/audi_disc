@@ -1158,3 +1158,37 @@ def test_admin_cash_close_pdf_is_generated_and_seller_is_blocked() -> None:
     assert admin_response.headers["content-type"] == "application/pdf"
     assert admin_response.content.startswith(b"%PDF")
     assert seller_response.status_code == 403
+
+
+def test_admin_exports_products_and_sales_to_pdf_and_xlsx() -> None:
+    admin_client, repo = make_client("Administrador")
+    admin_client.post(
+        "/sales",
+        json={
+            "productos": [{"productoId": "p1", "cantidad": 1, "precioVendidoCentavos": 1500}],
+            "totalCentavos": 1500,
+            "recibidoCentavos": 1500,
+            "metodo": "Efectivo",
+        },
+    )
+    seller_client, _repo = make_client("Vendedor", repo)
+
+    products_xlsx = admin_client.get("/reports/products.xlsx")
+    products_pdf = admin_client.get("/reports/products.pdf")
+    sales_xlsx = admin_client.get("/reports/sales.xlsx?dateFrom=2026-05-01&dateTo=2026-05-07")
+    sales_pdf = admin_client.get("/reports/sales.pdf?dateFrom=2026-05-01&dateTo=2026-05-07")
+    seller_products_xlsx = seller_client.get("/reports/products.xlsx")
+
+    assert products_xlsx.status_code == 200
+    assert products_xlsx.headers["content-type"].startswith(
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+    assert products_xlsx.content.startswith(b"PK")
+    assert products_pdf.status_code == 200
+    assert products_pdf.headers["content-type"] == "application/pdf"
+    assert products_pdf.content.startswith(b"%PDF")
+    assert sales_xlsx.status_code == 200
+    assert sales_xlsx.content.startswith(b"PK")
+    assert sales_pdf.status_code == 200
+    assert sales_pdf.content.startswith(b"%PDF")
+    assert seller_products_xlsx.status_code == 403

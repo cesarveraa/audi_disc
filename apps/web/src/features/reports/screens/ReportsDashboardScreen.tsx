@@ -5,12 +5,10 @@ import {
   ArrowLeft,
   BarChart3,
   CalendarRange,
-  CreditCard,
+  Download,
   FileText,
-  LayoutDashboard,
-  LogOut,
+  FileSpreadsheet,
   ReceiptText,
-  ShieldCheck,
   TrendingUp,
   Trophy,
   UsersRound,
@@ -19,11 +17,16 @@ import type { ReportsDashboard, SalesHistory } from '@audidisc/shared';
 import { formatBsFromCentavos } from '@audidisc/shared';
 
 import { useRequiredAuth } from '@app/providers/AuthProvider';
+import { AppSidebar } from '@app/navigation/AppSidebar';
 import { AppButton } from '@core/ui/AppButton';
 import { WeeklyRevenueChart } from '@features/reports/components/WeeklyRevenueChart';
 import { YearComparisonChart } from '@features/reports/components/YearComparisonChart';
 import {
   downloadCashClosePdf,
+  downloadProductsExcel,
+  downloadProductsPdf,
+  downloadSalesExcel,
+  downloadSalesPdf,
   fetchReportsDashboard,
   fetchSalesHistory,
 } from '@features/reports/services/reportsService';
@@ -55,7 +58,7 @@ export default function ReportsDashboardScreen() {
   const [dateFrom, setDateFrom] = useState(() => daysAgoIso(6));
   const [dateTo, setDateTo] = useState(todayIso());
   const [isLoading, setLoading] = useState(true);
-  const [isPdfLoading, setPdfLoading] = useState(false);
+  const [exporting, setExporting] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const loadReports = useCallback(async () => {
@@ -80,14 +83,37 @@ export default function ReportsDashboardScreen() {
   }, [loadReports]);
 
   async function handleCashClosePdf() {
-    setPdfLoading(true);
+    setExporting('cash-pdf');
     setError(null);
     try {
       await downloadCashClosePdf({ idToken, dateFrom, dateTo });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo generar cierre de caja');
     } finally {
-      setPdfLoading(false);
+      setExporting(null);
+    }
+  }
+
+  async function handleExport(kind: 'products-xlsx' | 'products-pdf' | 'sales-xlsx' | 'sales-pdf') {
+    setExporting(kind);
+    setError(null);
+    try {
+      if (kind === 'products-xlsx') {
+        await downloadProductsExcel({ idToken });
+      }
+      if (kind === 'products-pdf') {
+        await downloadProductsPdf({ idToken });
+      }
+      if (kind === 'sales-xlsx') {
+        await downloadSalesExcel({ idToken, dateFrom, dateTo });
+      }
+      if (kind === 'sales-pdf') {
+        await downloadSalesPdf({ idToken, dateFrom, dateTo });
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No se pudo exportar la informacion');
+    } finally {
+      setExporting(null);
     }
   }
 
@@ -100,52 +126,7 @@ export default function ReportsDashboardScreen() {
   return (
     <main className="min-h-screen bg-[radial-gradient(circle_at_top_left,rgba(228,0,43,0.08),transparent_34%),linear-gradient(180deg,#ffffff_0%,#f7f8fa_46%,#eef0f4_100%)] text-gray-950">
       <div className="mx-auto grid min-h-screen max-w-[1680px] grid-cols-1 gap-0 lg:grid-cols-[292px_minmax(0,1fr)]">
-        <aside className="z-20 border-b border-white/60 bg-white/55 px-4 py-4 shadow-sm backdrop-blur-2xl lg:sticky lg:top-0 lg:h-screen lg:border-b-0 lg:border-r lg:px-5 lg:py-6">
-          <div className="rounded-panel border border-white/70 bg-white/55 p-4 shadow-sm backdrop-blur-xl">
-            <strong className="block text-base font-semibold text-gray-950">Audi Disc</strong>
-            <span className="mt-1 block text-xs font-semibold uppercase tracking-[0.14em] text-gray-500">
-              Reportes / {user.role}
-            </span>
-          </div>
-          <nav className="mt-5 grid gap-2" aria-label="Principal">
-            <a className="flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold text-gray-600 transition hover:bg-white/70" href="/inventario">
-              <LayoutDashboard className="h-4 w-4" />
-              Inventario
-            </a>
-            <a className="flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold text-gray-600 transition hover:bg-white/70" href="/ventas">
-              <CreditCard className="h-4 w-4" />
-              Ventas POS
-            </a>
-            <a className="flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold text-gray-600 transition hover:bg-white/70" href="/clientes">
-              <UsersRound className="h-4 w-4" />
-              Clientes
-            </a>
-            <a className="flex items-center gap-3 rounded-2xl bg-white px-4 py-3 text-sm font-semibold text-gray-950 shadow-sm" href="/reportes">
-              <span className="h-2 w-2 rounded-full bg-audi-red" />
-              <BarChart3 className="h-4 w-4 text-gray-500" />
-              Reportes
-            </a>
-            <a className="flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold text-gray-600 transition hover:bg-white/70" href="/historial">
-              <ReceiptText className="h-4 w-4" />
-              Ventas Pasadas
-            </a>
-            <a className="flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold text-gray-600 transition hover:bg-white/70" href="/bi">
-              <TrendingUp className="h-4 w-4" />
-              Graficos Avanzados
-            </a>
-            <a className="flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold text-gray-600 transition hover:bg-white/70" href="/auditoria">
-              <ShieldCheck className="h-4 w-4" />
-              Auditoria
-            </a>
-            <button
-              className="flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold text-gray-600 transition hover:bg-white/70"
-              onClick={() => void logout()}
-            >
-              <LogOut className="h-4 w-4" />
-              Salir
-            </button>
-          </nav>
-        </aside>
+        <AppSidebar active="reports" user={user} isAdmin={isAdmin} onLogout={logout} />
 
         <section className="min-w-0 px-4 py-5 sm:px-6 lg:px-8 lg:py-8">
           <header className="mb-6 flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
@@ -165,8 +146,24 @@ export default function ReportsDashboardScreen() {
             <div className="flex flex-wrap gap-3">
               <AppButton
                 variant="neutral"
+                icon={<FileSpreadsheet className="h-4 w-4" />}
+                isLoading={exporting === 'products-xlsx'}
+                onClick={() => void handleExport('products-xlsx')}
+              >
+                Excel productos
+              </AppButton>
+              <AppButton
+                variant="neutral"
                 icon={<FileText className="h-4 w-4" />}
-                isLoading={isPdfLoading}
+                isLoading={exporting === 'products-pdf'}
+                onClick={() => void handleExport('products-pdf')}
+              >
+                PDF productos
+              </AppButton>
+              <AppButton
+                variant="neutral"
+                icon={<FileText className="h-4 w-4" />}
+                isLoading={exporting === 'cash-pdf'}
                 onClick={() => void handleCashClosePdf()}
               >
                 PDF cierre de caja
@@ -399,6 +396,27 @@ export default function ReportsDashboardScreen() {
                 </AppButton>
               </div>
             </div>
+
+            {isAdmin && (
+              <div className="mb-5 flex flex-wrap gap-3">
+                <AppButton
+                  variant="neutral"
+                  icon={<FileSpreadsheet className="h-4 w-4" />}
+                  isLoading={exporting === 'sales-xlsx'}
+                  onClick={() => void handleExport('sales-xlsx')}
+                >
+                  Excel ventas
+                </AppButton>
+                <AppButton
+                  variant="neutral"
+                  icon={<Download className="h-4 w-4" />}
+                  isLoading={exporting === 'sales-pdf'}
+                  onClick={() => void handleExport('sales-pdf')}
+                >
+                  PDF ventas
+                </AppButton>
+              </div>
+            )}
 
             <div className="mb-4 grid gap-3 md:grid-cols-3">
               <div className="rounded-2xl bg-gray-50 p-4">

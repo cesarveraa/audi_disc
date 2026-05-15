@@ -1,21 +1,16 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ArrowLeft,
-  BarChart3,
   ChevronLeft,
   ChevronRight,
-  CreditCard,
   Database,
   History,
-  LayoutDashboard,
-  LogOut,
-  ReceiptText,
   RefreshCw,
-  ShieldCheck,
 } from 'lucide-react';
 import type { AuditAction, AuditLog, AuditLogsPage } from '@audidisc/shared';
 
 import { useRequiredAuth } from '@app/providers/AuthProvider';
+import { AppSidebar } from '@app/navigation/AppSidebar';
 import { AppButton } from '@core/ui/AppButton';
 import { fetchAuditLogs } from '@features/audit/services/auditService';
 
@@ -63,7 +58,7 @@ function changedFields(log: AuditLog) {
 }
 
 export default function AuditLogScreen() {
-  const { idToken, logout, user } = useRequiredAuth();
+  const { idToken, isAdmin, logout, user } = useRequiredAuth();
   const [page, setPage] = useState(1);
   const [data, setData] = useState<AuditLogsPage | null>(null);
   const [isLoading, setLoading] = useState(true);
@@ -93,44 +88,7 @@ export default function AuditLogScreen() {
   return (
     <main className="min-h-screen bg-[radial-gradient(circle_at_top_left,rgba(228,0,43,0.08),transparent_34%),linear-gradient(180deg,#ffffff_0%,#f7f8fa_46%,#eef0f4_100%)] text-gray-950">
       <div className="mx-auto grid min-h-screen max-w-[1680px] grid-cols-1 gap-0 lg:grid-cols-[292px_minmax(0,1fr)]">
-        <aside className="z-20 border-b border-white/60 bg-white/55 px-4 py-4 shadow-sm backdrop-blur-2xl lg:sticky lg:top-0 lg:h-screen lg:border-b-0 lg:border-r lg:px-5 lg:py-6">
-          <div className="rounded-panel border border-white/70 bg-white/55 p-4 shadow-sm backdrop-blur-xl">
-            <strong className="block text-base font-semibold text-gray-950">Audi Disc</strong>
-            <span className="mt-1 block text-xs font-semibold uppercase tracking-[0.14em] text-gray-500">
-              Auditoria / {user.role}
-            </span>
-          </div>
-          <nav className="mt-5 grid gap-2" aria-label="Principal">
-            <a className="flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold text-gray-600 transition hover:bg-white/70" href="/inventario">
-              <LayoutDashboard className="h-4 w-4" />
-              Inventario
-            </a>
-            <a className="flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold text-gray-600 transition hover:bg-white/70" href="/ventas">
-              <CreditCard className="h-4 w-4" />
-              Ventas POS
-            </a>
-            <a className="flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold text-gray-600 transition hover:bg-white/70" href="/reportes">
-              <ReceiptText className="h-4 w-4" />
-              Reportes
-            </a>
-            <a className="flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold text-gray-600 transition hover:bg-white/70" href="/bi">
-              <BarChart3 className="h-4 w-4" />
-              Graficos Avanzados
-            </a>
-            <a className="flex items-center gap-3 rounded-2xl bg-white px-4 py-3 text-sm font-semibold text-gray-950 shadow-sm" href="/auditoria">
-              <span className="h-2 w-2 rounded-full bg-audi-red" />
-              <ShieldCheck className="h-4 w-4 text-gray-500" />
-              Auditoria
-            </a>
-            <button
-              className="flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold text-gray-600 transition hover:bg-white/70"
-              onClick={() => void logout()}
-            >
-              <LogOut className="h-4 w-4" />
-              Salir
-            </button>
-          </nav>
-        </aside>
+        <AppSidebar active="audit" user={user} isAdmin={isAdmin} onLogout={logout} />
 
         <section className="min-w-0 px-4 py-5 sm:px-6 lg:px-8 lg:py-8">
           <header className="mb-6 flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
