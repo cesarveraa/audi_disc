@@ -5,7 +5,7 @@ import time
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import analytics, audit, customers, dashboard, health, inventory, me, notifications, products, public, reports, sales
+from app.api import access, analytics, audit, customers, dashboard, health, inventory, me, notifications, products, public, reports, sales
 from app.core.config import get_settings
 from app.core.security import firebase_auth_middleware
 from app.repositories.base import InventoryRepository
@@ -36,7 +36,8 @@ def create_app(repository: InventoryRepository | None = None) -> FastAPI:
         allow_origins=settings.cors_origin_list,
         allow_credentials=True,
         allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
-        allow_headers=["Authorization", "Content-Type"],
+        allow_headers=["Accept", "Authorization", "Content-Type", "If-None-Match"],
+        expose_headers=["Cache-Control", "ETag"],
     )
 
     @app.middleware("http")
@@ -46,7 +47,10 @@ def create_app(repository: InventoryRepository | None = None) -> FastAPI:
         response.headers["X-Frame-Options"] = "DENY"
         response.headers["Referrer-Policy"] = "no-referrer"
         response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
-        response.headers["Cache-Control"] = "no-store"
+        if request.url.path.startswith("/api/v1/public/"):
+            response.headers.setdefault("Cache-Control", "public, max-age=60, s-maxage=120, stale-while-revalidate=600")
+        else:
+            response.headers["Cache-Control"] = "no-store"
         return response
 
     app.middleware("http")(firebase_auth_middleware)
@@ -93,6 +97,7 @@ def create_app(repository: InventoryRepository | None = None) -> FastAPI:
     app.include_router(analytics.router)
     app.include_router(dashboard.router)
     app.include_router(notifications.router)
+    app.include_router(access.router)
     api_v1_prefix = "/api/v1"
     app.include_router(health.router, prefix=api_v1_prefix)
     app.include_router(me.router, prefix=api_v1_prefix)
@@ -105,6 +110,7 @@ def create_app(repository: InventoryRepository | None = None) -> FastAPI:
     app.include_router(analytics.router, prefix=api_v1_prefix)
     app.include_router(dashboard.router, prefix=api_v1_prefix)
     app.include_router(notifications.router, prefix=api_v1_prefix)
+    app.include_router(access.router, prefix=api_v1_prefix)
     app.include_router(public.router, prefix=api_v1_prefix)
     return app
 

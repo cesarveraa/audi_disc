@@ -8,7 +8,20 @@ MoneyCentavos = Annotated[int, Field(ge=0, le=100_000_000)]
 PositiveMoneyCentavos = Annotated[int, Field(gt=0, le=100_000_000)]
 StrictName = Annotated[str, Field(min_length=1, max_length=120)]
 OptionalLabel = Annotated[str | None, Field(default=None, max_length=80)]
-Role = Literal["Administrador", "Vendedor"]
+Role = Annotated[str, Field(min_length=1, max_length=80)]
+PermissionKey = Literal[
+    "inventory",
+    "inventory_write",
+    "sales",
+    "customers",
+    "reports",
+    "history",
+    "analytics",
+    "audit",
+    "users",
+    "style",
+    "financials",
+]
 PaymentMethod = Literal["Efectivo", "QR", "Transferencia"]
 InventoryMovementType = Literal["entrada", "ajuste"]
 PushPlatform = Literal["android", "ios", "web"]
@@ -23,6 +36,61 @@ class CurrentUserResponse(StrictModel):
     email: str | None
     displayName: str | None
     role: Role
+    roleId: str | None = None
+    permissions: list[PermissionKey]
+
+
+class PermissionDefinitionResponse(StrictModel):
+    key: PermissionKey
+    label: str
+    zone: str
+    description: str
+
+
+class RoleCreate(StrictModel):
+    nombre: Annotated[str, Field(min_length=2, max_length=80)]
+    descripcion: Annotated[str | None, Field(default=None, max_length=240)] = None
+    permissions: Annotated[list[PermissionKey], Field(min_length=1)]
+
+
+class RoleUpdate(StrictModel):
+    nombre: Annotated[str | None, Field(default=None, min_length=2, max_length=80)] = None
+    descripcion: Annotated[str | None, Field(default=None, max_length=240)] = None
+    permissions: Annotated[list[PermissionKey] | None, Field(default=None, min_length=1)] = None
+    estado: bool | None = None
+
+
+class RoleResponse(StrictModel):
+    id: str
+    nombre: str
+    descripcion: str | None = None
+    permissions: list[PermissionKey]
+    system: bool = False
+    estado: bool = True
+    updatedAt: str | None = None
+
+
+class UserCreate(StrictModel):
+    email: Annotated[str, Field(min_length=6, max_length=160)]
+    password: Annotated[str, Field(min_length=8, max_length=128)]
+    displayName: Annotated[str | None, Field(default=None, max_length=120)] = None
+    roleId: Annotated[str, Field(min_length=1, max_length=80)]
+
+
+class UserAccessUpdate(StrictModel):
+    roleId: Annotated[str, Field(min_length=1, max_length=80)]
+
+
+class ManagedUserResponse(StrictModel):
+    uid: str
+    email: str | None
+    displayName: str | None
+    disabled: bool
+    role: str
+    roleId: str
+    permissions: list[PermissionKey]
+    lastSignInAt: str | None = None
+    createdAt: str | None = None
 
 
 class ProductCreate(StrictModel):

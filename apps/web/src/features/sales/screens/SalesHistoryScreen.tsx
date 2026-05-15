@@ -25,7 +25,8 @@ function localDateIso(daysAgo = 0) {
 }
 
 export default function SalesHistoryScreen() {
-  const { idToken, isAdmin, logout, user } = useRequiredAuth();
+  const { canAccess, canViewFinancials, idToken, logout, user } = useRequiredAuth();
+  const canVoidSales = canAccess('history');
   const [dateFrom, setDateFrom] = useState(() => localDateIso(6));
   const [dateTo, setDateTo] = useState(() => localDateIso());
   const [history, setHistory] = useState<SalesHistory | null>(null);
@@ -67,7 +68,7 @@ export default function SalesHistoryScreen() {
   );
 
   async function handleVoid(saleId: string) {
-    if (!isAdmin) {
+    if (!canVoidSales) {
       return;
     }
 
@@ -85,9 +86,9 @@ export default function SalesHistoryScreen() {
   }
 
   return (
-    <main className="min-h-screen bg-[radial-gradient(circle_at_top_left,rgba(228,0,43,0.08),transparent_34%),linear-gradient(180deg,#ffffff_0%,#f7f8fa_46%,#eef0f4_100%)] text-gray-950">
-      <div className="mx-auto grid min-h-screen max-w-[1680px] grid-cols-1 gap-0 lg:grid-cols-[292px_minmax(0,1fr)]">
-        <AppSidebar active="history" user={user} isAdmin={isAdmin} onLogout={logout} />
+    <main className="ad-page">
+      <div className="ad-shell">
+        <AppSidebar active="history" user={user} onLogout={logout} />
 
         <section className="min-w-0 px-4 py-5 sm:px-6 lg:px-8 lg:py-8">
           <header className="mb-6 flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
@@ -107,7 +108,7 @@ export default function SalesHistoryScreen() {
               </p>
             </div>
             <div className="rounded-2xl bg-audi-red px-4 py-3 text-sm font-semibold text-white shadow-button">
-              RBAC Admin activo
+              RBAC por zona activo
             </div>
           </header>
 
@@ -138,10 +139,12 @@ export default function SalesHistoryScreen() {
               <span className="text-sm font-semibold text-gray-500">Ventas</span>
               <strong className="mt-2 block text-3xl font-semibold">{history?.cantidadVentas ?? 0}</strong>
             </article>
-            <article className="rounded-2xl bg-gray-950 p-5 text-white shadow-sm">
-              <span className="text-sm font-semibold text-white/70">Utilidad</span>
-              <strong className="mt-2 block text-3xl font-semibold">{formatBsFromCentavos(utilidad)}</strong>
-            </article>
+            {canViewFinancials && (
+              <article className="rounded-2xl bg-gray-950 p-5 text-white shadow-sm">
+                <span className="text-sm font-semibold text-white/70">Utilidad</span>
+                <strong className="mt-2 block text-3xl font-semibold">{formatBsFromCentavos(utilidad)}</strong>
+              </article>
+            )}
           </section>
 
           <section className="overflow-hidden rounded-panel border border-white/70 bg-white/85 shadow-card backdrop-blur-xl">
@@ -170,7 +173,7 @@ export default function SalesHistoryScreen() {
                     <span className="block text-xs font-semibold uppercase tracking-[0.14em] text-gray-500">Total</span>
                     <strong className="block text-xl font-semibold text-gray-950">{formatBsFromCentavos(sale.totalCentavos)}</strong>
                   </div>
-                  {isAdmin && (
+                  {canVoidSales && (
                     <AppButton
                       variant="neutral"
                       icon={<RotateCcw className="h-4 w-4" />}

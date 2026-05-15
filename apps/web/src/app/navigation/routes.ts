@@ -6,6 +6,8 @@ export const routes = {
   history: '/historial',
   analytics: '/bi',
   audit: '/auditoria',
+  users: '/usuarios',
+  style: '/estilo',
 } as const;
 
 export type AppRouteKey = keyof typeof routes;

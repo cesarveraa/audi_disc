@@ -18,7 +18,7 @@ import {
 } from '@features/customers/services/customersService';
 
 export default function CustomersScreen() {
-  const { idToken, isAdmin, logout, user } = useRequiredAuth();
+  const { idToken, logout, user } = useRequiredAuth();
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [query, setQuery] = useState('');
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
@@ -102,9 +102,9 @@ export default function CustomersScreen() {
   }
 
   return (
-    <main className="min-h-screen bg-[radial-gradient(circle_at_top_left,rgba(228,0,43,0.08),transparent_34%),linear-gradient(180deg,#ffffff_0%,#f7f8fa_46%,#eef0f4_100%)] text-gray-950">
-      <div className="mx-auto grid min-h-screen max-w-[1680px] grid-cols-1 lg:grid-cols-[292px_minmax(0,1fr)]">
-        <AppSidebar active="customers" user={user} isAdmin={isAdmin} onLogout={logout} />
+    <main className="ad-page">
+      <div className="ad-shell">
+        <AppSidebar active="customers" user={user} onLogout={logout} />
 
         <section className="min-w-0 px-4 py-5 sm:px-6 lg:px-8 lg:py-8">
           <header className="mb-6 flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">

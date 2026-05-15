@@ -9,20 +9,27 @@ service cloud.firestore {
       return signedIn() && request.auth.token.role == 'Administrador';
     }
 
+    function hasPermission(permission) {
+      return isAdmin()
+        || (signedIn()
+          && request.auth.token.permissions is list
+          && request.auth.token.permissions.hasAny([permission]));
+    }
+
     match /productos/{productId} {
-      allow read: if signedIn();
-      allow create, update, delete: if isAdmin();
+      allow read: if hasPermission('inventory');
+      allow create, update, delete: if hasPermission('inventory_write');
     }
 
     match /ventas/{saleId} {
-      allow read: if signedIn();
-      allow create: if signedIn();
-      allow update, delete: if isAdmin();
+      allow read: if hasPermission('sales') || hasPermission('history');
+      allow create: if hasPermission('sales');
+      allow update, delete: if hasPermission('history');
     }
 
     match /clientes/{customerId} {
-      allow read, create, update: if signedIn();
-      allow delete: if isAdmin();
+      allow read, create, update: if hasPermission('customers');
+      allow delete: if hasPermission('customers');
     }
 
     match /pushTokens/{tokenId} {
@@ -37,13 +44,22 @@ service cloud.firestore {
     }
 
     match /audit_logs/{auditId} {
-      allow read: if isAdmin();
+      allow read: if hasPermission('audit');
       allow write: if false;
     }
 
+    match /roles/{roleId} {
+      allow read, write: if hasPermission('users');
+    }
+
+    match /user_profiles/{userId} {
+      allow read: if signedIn() && (request.auth.uid == userId || hasPermission('users'));
+      allow write: if hasPermission('users');
+    }
+
     match /usuarios/{userId} {
-      allow read: if signedIn() && (request.auth.uid == userId || isAdmin());
-      allow write: if isAdmin();
+      allow read: if signedIn() && (request.auth.uid == userId || hasPermission('users'));
+      allow write: if hasPermission('users');
     }
   }
 }

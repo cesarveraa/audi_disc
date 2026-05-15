@@ -59,6 +59,7 @@ export async function apiFetch(path: string, options: ApiFetchOptions = {}) {
   try {
     response = await fetch(url, {
       ...requestOptions,
+      cache: requestOptions.cache ?? 'no-store',
       headers: requestHeaders,
       body: json === undefined ? undefined : JSON.stringify(json),
     });

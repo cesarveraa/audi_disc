@@ -7,14 +7,16 @@ import {
   signInWithEmailAndPassword,
   signOut,
 } from 'firebase/auth';
-import type { CurrentUser, UserRole } from '@audidisc/shared';
-import { isAdminRole } from '@audidisc/shared';
+import type { CurrentUser, PermissionKey } from '@audidisc/shared';
+import { hasPermission, isAdminRole, permissionsForRole } from '@audidisc/shared';
 
 import { getFirebaseApp } from '@infra/firebase/firebaseApp';
 
 type AuthContextValue = {
   user: CurrentUser | null;
   isAdmin: boolean;
+  canViewFinancials: boolean;
+  canAccess: (permission: PermissionKey) => boolean;
   idToken: string | null;
   isLoading: boolean;
   authEnabled: boolean;
@@ -26,10 +28,6 @@ type AuthContextValue = {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 const SESSION_TIMEOUT_MS = 4 * 60 * 60 * 1000;
-
-function isRole(value: unknown): value is UserRole {
-  return value === 'Administrador' || value === 'Vendedor';
-}
 
 function sessionTimeRemaining(tokenResult: { authTime?: string; claims: Record<string, unknown> }) {
   const claimAuthTime = tokenResult.claims.auth_time;
@@ -93,12 +91,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           return;
         }
         const roleClaim = tokenResult.claims.role;
-        const role = isRole(roleClaim) ? roleClaim : 'Vendedor';
+        const role = typeof roleClaim === 'string' && roleClaim.trim() ? roleClaim.trim() : 'Vendedor';
+        const roleIdClaim = tokenResult.claims.roleId;
+        const rawPermissions = tokenResult.claims.permissions;
+        const permissions = permissionsForRole(
+          role,
+          Array.isArray(rawPermissions) ? rawPermissions.map(String) : null,
+        );
         setUser({
           uid: currentUser.uid,
           email: currentUser.email,
           displayName: currentUser.displayName,
           role,
+          roleId: typeof roleIdClaim === 'string' ? roleIdClaim : role,
+          permissions,
         });
         setIdToken(token);
         sessionTimer = setTimeout(() => {
@@ -155,6 +161,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     () => ({
       user,
       isAdmin: isAdminRole(user?.role),
+      canViewFinancials: hasPermission(user, 'financials'),
+      canAccess: permission => hasPermission(user, permission),
       idToken,
       isLoading,
       authEnabled,

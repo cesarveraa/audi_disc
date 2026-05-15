@@ -128,7 +128,7 @@ function EmptyState({ children }: { children: string }) {
 }
 
 export default function AdvancedAnalyticsScreen() {
-  const { idToken, isAdmin, logout, user } = useRequiredAuth();
+  const { idToken, logout, user } = useRequiredAuth();
   const [dashboard, setDashboard] = useState<AnalyticsDashboard | null>(null);
   const [isLoading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -178,9 +178,9 @@ export default function AdvancedAnalyticsScreen() {
   const topPareto: ParetoProductMetric | undefined = dashboard?.pareto.items[0];
 
   return (
-    <main className="min-h-screen bg-[#0A0A0A] text-white">
-      <div className="mx-auto grid min-h-screen max-w-[1680px] grid-cols-1 gap-0 lg:grid-cols-[292px_minmax(0,1fr)]">
-        <AppSidebar active="analytics" user={user} isAdmin={isAdmin} onLogout={logout} theme="dark" />
+    <main className="ad-page">
+      <div className="ad-shell">
+        <AppSidebar active="analytics" user={user} onLogout={logout} />
 
         <section className="min-w-0 px-4 py-5 sm:px-6 lg:px-8 lg:py-8">
           <header className="mb-6 flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">

@@ -2,7 +2,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query
 
-from app.core.security import AuthenticatedUser, get_current_user
+from app.core.security import AuthenticatedUser, require_permission
 from app.dependencies import get_repository
 from app.domain.schemas import CustomerCreate, CustomerUpdate
 from app.repositories.base import InventoryRepository
@@ -14,7 +14,7 @@ router = APIRouter(tags=["customers"])
 @router.get("/clientes")
 def list_customers(
     repository: Annotated[InventoryRepository, Depends(get_repository)],
-    _user: Annotated[AuthenticatedUser, Depends(get_current_user)],
+    _user: Annotated[AuthenticatedUser, Depends(require_permission("customers"))],
     q: Annotated[str | None, Query(max_length=80)] = None,
 ) -> list[dict]:
     return repository.list_customers(q)
@@ -25,7 +25,7 @@ def list_customers(
 def create_customer(
     payload: CustomerCreate,
     repository: Annotated[InventoryRepository, Depends(get_repository)],
-    user: Annotated[AuthenticatedUser, Depends(get_current_user)],
+    user: Annotated[AuthenticatedUser, Depends(require_permission("customers"))],
 ) -> dict:
     return repository.create_customer(payload, user)
 
@@ -36,7 +36,7 @@ def update_customer(
     customer_id: str,
     payload: CustomerUpdate,
     repository: Annotated[InventoryRepository, Depends(get_repository)],
-    user: Annotated[AuthenticatedUser, Depends(get_current_user)],
+    user: Annotated[AuthenticatedUser, Depends(require_permission("customers"))],
 ) -> dict:
     return repository.update_customer(customer_id, payload, user)
 
@@ -46,6 +46,6 @@ def update_customer(
 def customer_sales_history(
     customer_id: str,
     repository: Annotated[InventoryRepository, Depends(get_repository)],
-    user: Annotated[AuthenticatedUser, Depends(get_current_user)],
+    user: Annotated[AuthenticatedUser, Depends(require_permission("customers"))],
 ) -> dict:
-    return repository.customer_sales_history(customer_id, include_financials=user.is_admin)
+    return repository.customer_sales_history(customer_id, include_financials=user.can_view_financials)

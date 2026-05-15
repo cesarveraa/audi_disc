@@ -36,7 +36,8 @@ function stockBadge(product: Product) {
 }
 
 export default function InventoryScreen() {
-  const { idToken, isAdmin, logout, user } = useRequiredAuth();
+  const { canAccess, canViewFinancials, idToken, logout, user } = useRequiredAuth();
+  const canManageInventory = canAccess('inventory_write');
   const [stockFilter, setStockFilter] = useState<StockFilter>('all');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
@@ -120,11 +121,11 @@ export default function InventoryScreen() {
         return;
       }
       setQuery(product.sku ?? product.nombre);
-      if (isAdmin) {
+      if (canManageInventory) {
         setEditingProduct(product);
         setProductModalOpen(true);
       } else {
-        setActionError(`Producto encontrado: ${product.nombre}. Solo Administrador puede abrir la ficha de edicion.`);
+        setActionError(`Producto encontrado: ${product.nombre}. Tu rol no puede abrir la ficha de edicion.`);
       }
     } catch (err) {
       setActionError(err instanceof Error ? err.message : 'No se pudo escanear el codigo');
@@ -181,10 +182,10 @@ export default function InventoryScreen() {
   }
 
   return (
-    <main className="min-h-screen bg-[radial-gradient(circle_at_top_left,rgba(228,0,43,0.08),transparent_34%),linear-gradient(180deg,#ffffff_0%,#f7f8fa_46%,#eef0f4_100%)] text-gray-950">
+    <main className="ad-page">
       <MobilePullToRefresh disabled={isLoading || isSaving} onRefresh={refresh} />
-      <div className="mx-auto grid min-h-screen max-w-[1680px] grid-cols-1 gap-0 lg:grid-cols-[292px_minmax(0,1fr)]">
-        <AppSidebar active="inventory" user={user} isAdmin={isAdmin} onLogout={logout} />
+      <div className="ad-shell">
+        <AppSidebar active="inventory" user={user} onLogout={logout} />
 
         <section className="min-w-0 px-4 py-5 sm:px-6 lg:px-8 lg:py-8">
           <header className="mb-8 flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
@@ -200,7 +201,7 @@ export default function InventoryScreen() {
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-3">
-              <CommandPalette isAdmin={isAdmin} onQueryChange={setQuery} onNewProduct={handleNewProduct} />
+              <CommandPalette isAdmin={canManageInventory} onQueryChange={setQuery} onNewProduct={handleNewProduct} />
               <AppButton
                 variant="neutral"
                 icon={<ScanBarcode className="h-4 w-4" />}
@@ -217,7 +218,7 @@ export default function InventoryScreen() {
               >
                 Actualizar
               </AppButton>
-              {isAdmin && (
+              {canManageInventory && (
                 <AppButton
                   variant="primary"
                   onClick={handleNewProduct}
@@ -312,9 +313,9 @@ export default function InventoryScreen() {
                       <th className="px-4 py-3">Categoria</th>
                       <th className="px-4 py-3 text-right">Stock</th>
                       <th className="px-4 py-3 text-right">Venta</th>
-                      {isAdmin && <th className="px-4 py-3 text-right">Costo</th>}
+                      {canViewFinancials && <th className="px-4 py-3 text-right">Costo</th>}
                       <th className="px-4 py-3 text-right">Estado</th>
-                      {isAdmin && <th className="px-4 py-3 text-right">Acciones</th>}
+                      {canManageInventory && <th className="px-4 py-3 text-right">Acciones</th>}
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
@@ -356,7 +357,7 @@ export default function InventoryScreen() {
                           <td className="px-4 py-4 text-right text-sm font-semibold text-gray-950">
                             {formatBsFromCentavos(product.precioVentaCentavos)}
                           </td>
-                          {isAdmin && (
+                          {canViewFinancials && (
                             <td className="px-4 py-4 text-right text-sm font-semibold text-gray-500">
                               {hasAdminFinancials(product)
                                 ? formatBsFromCentavos(product.precioCompraCentavos)
@@ -368,7 +369,7 @@ export default function InventoryScreen() {
                               {badge.label}
                             </span>
                           </td>
-                          {isAdmin && (
+                          {canManageInventory && (
                             <td className="px-4 py-4">
                               <div className="flex justify-end gap-2">
                                 <button

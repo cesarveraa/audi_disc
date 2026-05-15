@@ -14,6 +14,7 @@ def me(user: Annotated[AuthenticatedUser, Depends(get_current_user)]) -> Current
         uid=user.uid,
         email=user.email,
         displayName=user.display_name,
-        role=user.role,  # type: ignore[arg-type]
+        role=user.role,
+        roleId=user.role_id,
+        permissions=sorted(user.effective_permissions),  # type: ignore[arg-type]
     )
-

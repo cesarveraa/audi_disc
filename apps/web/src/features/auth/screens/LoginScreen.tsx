@@ -34,7 +34,7 @@ export default function LoginScreen() {
             Firebase Auth + RBAC
           </div>
           <p className="mt-2 text-sm leading-6 text-white/62">
-            Los roles se leen desde custom claims: Administrador o Vendedor.
+            Los roles y permisos se leen desde Firebase custom claims y el modulo de Usuarios.
           </p>
         </div>
 

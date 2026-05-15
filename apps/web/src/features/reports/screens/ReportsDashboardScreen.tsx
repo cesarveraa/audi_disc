@@ -52,7 +52,7 @@ function daysAgoIso(days: number) {
 }
 
 export default function ReportsDashboardScreen() {
-  const { idToken, isAdmin, logout, user } = useRequiredAuth();
+  const { canViewFinancials, idToken, logout, user } = useRequiredAuth();
   const [dashboard, setDashboard] = useState<ReportsDashboard | null>(null);
   const [history, setHistory] = useState<SalesHistory | null>(null);
   const [dateFrom, setDateFrom] = useState(() => daysAgoIso(6));
@@ -124,9 +124,9 @@ export default function ReportsDashboardScreen() {
   const stockAlerts = dashboard?.stockBajo.length ?? 0;
 
   return (
-    <main className="min-h-screen bg-[radial-gradient(circle_at_top_left,rgba(228,0,43,0.08),transparent_34%),linear-gradient(180deg,#ffffff_0%,#f7f8fa_46%,#eef0f4_100%)] text-gray-950">
-      <div className="mx-auto grid min-h-screen max-w-[1680px] grid-cols-1 gap-0 lg:grid-cols-[292px_minmax(0,1fr)]">
-        <AppSidebar active="reports" user={user} isAdmin={isAdmin} onLogout={logout} />
+    <main className="ad-page">
+      <div className="ad-shell">
+        <AppSidebar active="reports" user={user} onLogout={logout} />
 
         <section className="min-w-0 px-4 py-5 sm:px-6 lg:px-8 lg:py-8">
           <header className="mb-6 flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
@@ -195,7 +195,7 @@ export default function ReportsDashboardScreen() {
                 {formatBsFromCentavos(totalWeek)}
               </strong>
             </article>
-            {isAdmin && (
+            {canViewFinancials && (
               <article className="rounded-panel bg-audi-red p-5 text-white shadow-button">
                 <span className="text-sm font-semibold text-white/80">Utilidad hoy</span>
                 <strong className="mt-2 block text-3xl font-semibold">
@@ -209,7 +209,7 @@ export default function ReportsDashboardScreen() {
           </section>
 
           <section className="grid max-w-6xl gap-5 xl:grid-cols-[minmax(0,2fr)_minmax(280px,1fr)] xl:items-stretch">
-            <WeeklyRevenueChart data={dashboard?.ingresosSemanales ?? []} showProfit={isAdmin} />
+            <WeeklyRevenueChart data={dashboard?.ingresosSemanales ?? []} showProfit={canViewFinancials} />
 
             <aside className="rounded-2xl border border-white/70 bg-white/90 p-5 shadow-sm backdrop-blur-xl">
               <div className="mb-5 flex items-start justify-between gap-3">
@@ -242,7 +242,7 @@ export default function ReportsDashboardScreen() {
                   </span>
                 </div>
 
-                {isAdmin ? (
+                {canViewFinancials ? (
                   <div className="flex items-center justify-between gap-4 border-b border-gray-100 pb-4">
                     <div className="flex items-center gap-3">
                       <span className="grid h-10 w-10 place-items-center rounded-2xl bg-audi-red text-white">
@@ -335,7 +335,7 @@ export default function ReportsDashboardScreen() {
                         <span className="text-gray-500">Ventas</span>
                         <span>{formatBsFromCentavos(product.totalCentavos)}</span>
                       </div>
-                      {isAdmin && (
+                      {canViewFinancials && (
                         <div className="mt-1 flex items-center justify-between text-xs font-bold text-audi-red">
                           <span>Utilidad</span>
                           <span>{formatBsFromCentavos(product.utilidadCentavos ?? 0)}</span>
@@ -397,7 +397,7 @@ export default function ReportsDashboardScreen() {
               </div>
             </div>
 
-            {isAdmin && (
+            {canViewFinancials && (
               <div className="mb-5 flex flex-wrap gap-3">
                 <AppButton
                   variant="neutral"
@@ -427,7 +427,7 @@ export default function ReportsDashboardScreen() {
                 <span className="text-sm font-semibold text-gray-500">Ventas</span>
                 <strong className="mt-1 block text-xl font-semibold">{history?.cantidadVentas ?? 0}</strong>
               </div>
-              {isAdmin && (
+              {canViewFinancials && (
                 <div className="rounded-2xl bg-audi-red p-4 text-white">
                   <span className="text-sm font-semibold text-white/80">Utilidad rango</span>
                   <strong className="mt-1 block text-xl font-semibold">{formatBsFromCentavos(history?.utilidadCentavos ?? 0)}</strong>
@@ -451,7 +451,7 @@ export default function ReportsDashboardScreen() {
                   </div>
                   <div className="text-left lg:text-right">
                     <strong className="block text-lg text-gray-950">{formatBsFromCentavos(sale.totalCentavos)}</strong>
-                    {isAdmin && (
+                    {canViewFinancials && (
                       <span className="text-sm font-semibold text-audi-red">
                         Utilidad {formatBsFromCentavos(sale.productos.reduce((sum, item) => sum + (item.utilidadCentavos ?? 0), 0))}
                       </span>

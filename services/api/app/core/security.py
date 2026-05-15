@@ -1,3 +1,4 @@
+from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Annotated
 
@@ -12,6 +13,23 @@ from app.core.firebase import initialize_firebase
 ADMIN_ROLE = "Administrador"
 SELLER_ROLE = "Vendedor"
 ALLOWED_ROLES = {ADMIN_ROLE, SELLER_ROLE}
+PERMISSION_KEYS = {
+    "inventory",
+    "inventory_write",
+    "sales",
+    "customers",
+    "reports",
+    "history",
+    "analytics",
+    "audit",
+    "users",
+    "style",
+    "financials",
+}
+DEFAULT_ROLE_PERMISSIONS: dict[str, frozenset[str]] = {
+    ADMIN_ROLE: frozenset(PERMISSION_KEYS),
+    SELLER_ROLE: frozenset({"inventory", "sales", "customers"}),
+}
 
 bearer_scheme = HTTPBearer(auto_error=False)
 PUBLIC_PATHS = (
@@ -31,10 +49,31 @@ class AuthenticatedUser:
     email: str | None
     display_name: str | None
     role: str
+    role_id: str | None = None
+    permissions: frozenset[str] = frozenset()
 
     @property
     def is_admin(self) -> bool:
         return self.role == ADMIN_ROLE
+
+    @property
+    def effective_permissions(self) -> frozenset[str]:
+        return self.permissions or DEFAULT_ROLE_PERMISSIONS.get(self.role, frozenset())
+
+    @property
+    def can_view_financials(self) -> bool:
+        return self.is_admin or "financials" in self.effective_permissions
+
+    def has_permission(self, permission: str) -> bool:
+        return self.is_admin or permission in self.effective_permissions
+
+
+def _permissions_from_claims(role: str, raw_permissions: object) -> frozenset[str]:
+    if isinstance(raw_permissions, list):
+        permissions = {str(permission) for permission in raw_permissions if str(permission) in PERMISSION_KEYS}
+        if permissions:
+            return frozenset(permissions)
+    return DEFAULT_ROLE_PERMISSIONS.get(role, frozenset())
 
 
 def user_from_token(token: str) -> AuthenticatedUser:
@@ -48,7 +87,14 @@ def user_from_token(token: str) -> AuthenticatedUser:
         ) from exc
 
     role = decoded.get("role")
-    if role not in ALLOWED_ROLES:
+    if not isinstance(role, str) or not role.strip():
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="User role is not authorized",
+        )
+    role = role.strip()
+    permissions = _permissions_from_claims(role, decoded.get("permissions"))
+    if not permissions:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="User role is not authorized",
@@ -59,6 +105,8 @@ def user_from_token(token: str) -> AuthenticatedUser:
         email=decoded.get("email"),
         display_name=decoded.get("name"),
         role=role,
+        role_id=decoded.get("roleId") if isinstance(decoded.get("roleId"), str) else role,
+        permissions=permissions,
     )
 
 
@@ -124,3 +172,15 @@ def require_admin(user: Annotated[AuthenticatedUser, Depends(get_current_user)])
             detail="Administrador role required",
         )
     return user
+
+
+def require_permission(permission: str) -> Callable[[AuthenticatedUser], AuthenticatedUser]:
+    def dependency(user: Annotated[AuthenticatedUser, Depends(get_current_user)]) -> AuthenticatedUser:
+        if not user.has_permission(permission):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Permission required: {permission}",
+            )
+        return user
+
+    return dependency
