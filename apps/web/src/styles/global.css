@@ -20,14 +20,14 @@
   }
 
   :root.dark {
-    --ad-canvas: #070707;
-    --ad-panel: #151515;
-    --ad-panel-soft: rgba(255, 255, 255, 0.06);
-    --ad-text: #ffffff;
-    --ad-muted: rgba(255, 255, 255, 0.58);
+    --ad-canvas: #0b0b0d;
+    --ad-panel: #17171a;
+    --ad-panel-soft: rgba(24, 24, 27, 0.88);
+    --ad-text: #f8fafc;
+    --ad-muted: #a1a7b3;
     --ad-line: rgba(255, 255, 255, 0.12);
-    color: #ffffff;
-    background: #070707;
+    color: #f8fafc;
+    background: #0b0b0d;
   }
 
   * {
@@ -63,7 +63,8 @@
   .ad-page {
     @apply min-h-screen text-gray-950 dark:text-white;
     background:
-      radial-gradient(circle at top left, rgba(228, 0, 43, 0.08), transparent 34%),
+      radial-gradient(circle at top left, rgba(228, 0, 43, 0.10), transparent 34%),
+      radial-gradient(circle at 85% 0%, rgba(255, 255, 255, 0.05), transparent 28%),
       linear-gradient(180deg, var(--ad-canvas) 0%, var(--ad-canvas) 100%);
   }
 
@@ -78,4 +79,81 @@
   .ad-muted {
     @apply text-gray-500 dark:text-white/55;
   }
+}
+
+/* Dark mode rescue layer for legacy screens that were originally authored in light mode. */
+.dark .ad-content {
+  color: #f8fafc;
+}
+
+.dark .ad-content .text-gray-950,
+.dark .ad-content .text-gray-900,
+.dark .ad-content .text-gray-800 {
+  color: #f8fafc;
+}
+
+.dark .ad-content .text-gray-700,
+.dark .ad-content .text-gray-600 {
+  color: #d7dce5;
+}
+
+.dark .ad-content .text-gray-500,
+.dark .ad-content .text-gray-400 {
+  color: #9aa3b2;
+}
+
+.dark .ad-content [class*="bg-white"] {
+  background-color: rgba(24, 24, 27, 0.88);
+}
+
+.dark .ad-content [class*="bg-gray-50"],
+.dark .ad-content [class*="bg-gray-100"] {
+  background-color: rgba(255, 255, 255, 0.055);
+}
+
+.dark .ad-content [class*="bg-red-50"] {
+  background-color: rgba(228, 0, 43, 0.14);
+}
+
+.dark .ad-content [class*="border-white"],
+.dark .ad-content [class*="border-gray-"] {
+  border-color: rgba(255, 255, 255, 0.11);
+}
+
+.dark .ad-content input,
+.dark .ad-content select,
+.dark .ad-content textarea {
+  background-color: rgba(255, 255, 255, 0.065);
+  border-color: rgba(255, 255, 255, 0.12);
+  color: #f8fafc;
+  color-scheme: dark;
+}
+
+.dark .ad-content input::placeholder,
+.dark .ad-content textarea::placeholder {
+  color: rgba(248, 250, 252, 0.42);
+}
+
+.dark .ad-content option {
+  background-color: #17171a;
+  color: #f8fafc;
+}
+
+.dark .ad-content input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(1) opacity(0.72);
+}
+
+.dark .ad-content table thead {
+  background-color: rgba(255, 255, 255, 0.045);
+}
+
+.dark .ad-content tbody tr:hover {
+  background-color: rgba(255, 255, 255, 0.045);
+}
+
+.dark .ad-content [role="dialog"],
+.dark .ad-page [role="dialog"] {
+  background-color: #17171a;
+  border-color: rgba(255, 255, 255, 0.12);
+  color: #f8fafc;
 }

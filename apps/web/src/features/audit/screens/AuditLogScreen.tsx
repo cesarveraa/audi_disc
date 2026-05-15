@@ -90,7 +90,7 @@ export default function AuditLogScreen() {
       <div className="ad-shell">
         <AppSidebar active="audit" user={user} onLogout={logout} />
 
-        <section className="min-w-0 px-4 py-5 sm:px-6 lg:px-8 lg:py-8">
+        <section className="ad-content min-w-0 px-4 py-5 sm:px-6 lg:px-8 lg:py-8">
           <header className="mb-6 flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
             <div>
               <a href="/reportes" className="mb-5 inline-flex items-center gap-2 text-sm font-semibold text-gray-500 transition hover:text-gray-950">

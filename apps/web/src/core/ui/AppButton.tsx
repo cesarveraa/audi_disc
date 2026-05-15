@@ -13,9 +13,9 @@ const variantClass: Record<AppButtonVariant, string> = {
   primary:
     'bg-audi-red text-white shadow-button hover:bg-audi-redDark focus-visible:ring-audi-red',
   neutral:
-    'border border-gray-200 bg-white text-gray-900 shadow-sm hover:border-gray-300 hover:bg-gray-50 focus-visible:ring-gray-400',
+    'border border-gray-200 bg-white text-gray-900 shadow-sm hover:border-gray-300 hover:bg-gray-50 focus-visible:ring-gray-400 dark:border-white/10 dark:bg-white/[0.07] dark:text-white dark:hover:border-white/20 dark:hover:bg-white/[0.11]',
   ghost:
-    'bg-white/60 text-gray-700 hover:bg-white focus-visible:ring-gray-400',
+    'bg-white/60 text-gray-700 hover:bg-white focus-visible:ring-gray-400 dark:bg-white/[0.05] dark:text-white/70 dark:hover:bg-white/[0.1] dark:hover:text-white',
 };
 
 export function AppButton({
@@ -45,4 +45,3 @@ export function AppButton({
     </button>
   );
 }
-

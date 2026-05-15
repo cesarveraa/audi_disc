@@ -187,7 +187,7 @@ export default function InventoryScreen() {
       <div className="ad-shell">
         <AppSidebar active="inventory" user={user} onLogout={logout} />
 
-        <section className="min-w-0 px-4 py-5 sm:px-6 lg:px-8 lg:py-8">
+        <section className="ad-content min-w-0 px-4 py-5 sm:px-6 lg:px-8 lg:py-8">
           <header className="mb-8 flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
             <div className="max-w-3xl">
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-audi-red">
