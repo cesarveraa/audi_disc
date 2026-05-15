@@ -614,6 +614,13 @@ def test_protected_routes_require_firebase_bearer_token_without_override() -> No
     assert response.status_code == 401
     assert response.json()["detail"] == "Missing Firebase bearer token"
 
+    cors_response = client.get(
+        "/api/v1/productos",
+        headers={"Origin": "https://audi-disc-web-mrhl.vercel.app"},
+    )
+    assert cors_response.status_code == 401
+    assert cors_response.headers["access-control-allow-origin"] == "https://audi-disc-web-mrhl.vercel.app"
+
 
 def test_public_catalog_products_do_not_require_auth_and_hide_sensitive_fields() -> None:
     app = create_app(InMemoryInventoryRepository())
@@ -694,6 +701,9 @@ def test_cors_allows_localhost_and_loopback_frontend_origins() -> None:
         "http://10.0.2.2:5173",
         "http://localhost:5174",
         "http://127.0.0.1:5174",
+        "https://audi-disc-web.vercel.app",
+        "https://audi-disc-web-mrhl.vercel.app",
+        "https://audi-disc-catalog-mrhl.vercel.app",
     ):
         response = client.options(
             "/api/v1/productos",

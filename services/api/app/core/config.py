@@ -1,4 +1,5 @@
 from functools import lru_cache
+import re
 
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -23,6 +24,9 @@ class Settings(BaseSettings):
     firebase_token_uri: str = "https://oauth2.googleapis.com/token"
     firebase_auth_provider_x509_cert_url: str = "https://www.googleapis.com/oauth2/v1/certs"
     cors_origins: str = "http://localhost:5173,http://127.0.0.1:5173"
+    cors_origin_regex: str | None = (
+        r"^https://(audi-disc-web|audi-disc-catalog)(-[a-z0-9]+)?\.vercel\.app$"
+    )
     timezone: str = Field(default="America/La_Paz")
 
     @property
@@ -41,6 +45,13 @@ class Settings(BaseSettings):
         }
         configured_origins = {origin.strip() for origin in self.cors_origins.split(",") if origin.strip()}
         return sorted(configured_origins | required_origins)
+
+    def is_cors_origin_allowed(self, origin: str | None) -> bool:
+        if not origin:
+            return False
+        if origin in self.cors_origin_list:
+            return True
+        return bool(self.cors_origin_regex and re.fullmatch(self.cors_origin_regex, origin))
 
 
 @lru_cache

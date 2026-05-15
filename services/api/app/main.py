@@ -34,6 +34,7 @@ def create_app(repository: InventoryRepository | None = None) -> FastAPI:
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.cors_origin_list,
+        allow_origin_regex=settings.cors_origin_regex,
         allow_credentials=True,
         allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
         allow_headers=["Accept", "Authorization", "Content-Type", "If-None-Match"],
@@ -72,6 +73,12 @@ def create_app(repository: InventoryRepository | None = None) -> FastAPI:
                 elapsed_ms,
             )
             raise
+
+        origin = request.headers.get("Origin")
+        if origin and settings.is_cors_origin_allowed(origin) and "access-control-allow-origin" not in response.headers:
+            response.headers["Access-Control-Allow-Origin"] = origin
+            response.headers["Access-Control-Allow-Credentials"] = "true"
+            response.headers.add_vary_header("Origin")
 
         elapsed_ms = round((time.perf_counter() - start) * 1000, 2)
         if response.status_code >= 400:
