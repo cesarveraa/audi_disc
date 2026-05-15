@@ -127,7 +127,11 @@ export default function Catalog({ products }: CatalogPageProps) {
   const categories = useMemo(() => ['Todas', ...knownCategories], [knownCategories]);
   const hasFilters = query || brand !== 'Todas' || category !== 'Todas';
   const canonical = currentPage > 1 ? `/productos?page=${currentPage}` : '/productos';
-  const totalPages = Math.max(1, Math.ceil(pageData.total_count / PAGE_LIMIT));
+  const totalPages = Math.max(
+    1,
+    Math.ceil(pageData.total_count / PAGE_LIMIT),
+    currentPage + (pageData.has_more ? 1 : 0),
+  );
   const pageNumbers = useMemo(() => visiblePageNumbers(currentPage, totalPages), [currentPage, totalPages]);
   const totalLabel = pageData.total_count === 1 ? '1 producto' : `${pageData.total_count} productos`;
 

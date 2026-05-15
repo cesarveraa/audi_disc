@@ -8,6 +8,7 @@ from zoneinfo import ZoneInfo
 from fastapi import HTTPException, status
 from firebase_admin import messaging
 from google.cloud import firestore
+from google.cloud.firestore_v1.base_query import FieldFilter
 
 from app.core.config import get_settings
 from app.core.firebase import get_firestore_client
@@ -37,10 +38,16 @@ AUDIT_SYSTEM_FIELDS = {"createdAt", "updatedAt", "createdBy", "updatedBy"}
 ANALYTICS_LOOKBACK_DAYS = 90
 DEFAULT_LEAD_TIME_DAYS = 7
 DEAD_STOCK_DAYS = 122
+CATALOG_FALLBACK_SCAN_LIMIT = 600
+CATALOG_QUERY_TIMEOUT_SECONDS = 6.0
 
 
 def _normalize_query(value: str | None) -> str:
     return (value or "").casefold().strip()
+
+
+def _where(query, field: str, operator: str, value: object):
+    return query.where(filter=FieldFilter(field, operator, value))
 
 
 def _sale_to_response(sale_id: str, data: dict, include_financials: bool) -> dict:
@@ -155,51 +162,70 @@ class FirestoreInventoryRepository:
         limit = max(min(limit, 50), 1)
         offset = (page - 1) * limit
         normalized_query = _normalize_query(query)
-        ref = self.products.where("estado", "==", True)
+        ref = _where(self.products, "estado", "==", True)
 
         if marca:
-            ref = ref.where("marca", "==", marca.strip())
+            ref = _where(ref, "marca", "==", marca.strip())
         if categoria:
-            ref = ref.where("categoria", "==", categoria.strip())
+            ref = _where(ref, "categoria", "==", categoria.strip())
 
         if normalized_query:
-            filtered = []
-            for snapshot in ref.stream():
+            return self._scan_catalog_products(ref, offset, limit, normalized_query)
+
+        try:
+            snapshots = list(
+                ref.order_by("cantidad", direction=firestore.Query.DESCENDING)
+                .offset(offset)
+                .limit(limit + 1)
+                .stream(timeout=CATALOG_QUERY_TIMEOUT_SECONDS)
+            )
+            items = []
+            for snapshot in snapshots:
                 data = snapshot.to_dict() or {}
                 if int(data.get("cantidad", 0)) <= 0:
                     continue
+                items.append(normalize_product_doc(snapshot.id, data, False))
+                if len(items) >= limit:
+                    break
+            has_more = len(snapshots) > limit
+            return {
+                "items": items,
+                "total_count": offset + len(items) + (1 if has_more else 0),
+                "has_more": has_more,
+            }
+        except Exception:
+            logger.exception("catalog optimized query failed; falling back to bounded scan")
+            return self._scan_catalog_products(ref, offset, limit, normalized_query)
+
+    def _scan_catalog_products(self, ref, offset: int, limit: int, normalized_query: str) -> dict:
+        scan_limit = min(CATALOG_FALLBACK_SCAN_LIMIT, max(offset + (limit * 4), limit + 1, 50))
+        matched_count = 0
+        scanned_count = 0
+        items = []
+        for snapshot in ref.limit(scan_limit).stream(timeout=CATALOG_QUERY_TIMEOUT_SECONDS):
+            scanned_count += 1
+            data = snapshot.to_dict() or {}
+            if int(data.get("cantidad", 0)) <= 0:
+                continue
+            if normalized_query:
                 haystack = " ".join(
                     str(data.get(field) or "")
                     for field in ("nombre", "marca", "sku", "categoria")
                 ).casefold()
                 if normalized_query not in haystack:
                     continue
-                filtered.append(normalize_product_doc(snapshot.id, data, False))
-
-            total_count = len(filtered)
-            items = filtered[offset:offset + limit]
-            return {
-                "items": items,
-                "total_count": total_count,
-                "has_more": offset + len(items) < total_count,
-            }
-
-        filtered = []
-        for snapshot in ref.stream():
-            data = snapshot.to_dict() or {}
-            if int(data.get("cantidad", 0)) <= 0:
+            matched_count += 1
+            if matched_count <= offset:
                 continue
-            filtered.append(normalize_product_doc(snapshot.id, data, False))
+            if len(items) < limit:
+                items.append(normalize_product_doc(snapshot.id, data, False))
 
-        # Ordenar por cantidad
-        filtered.sort(key=lambda item: int(item.get("cantidad", 0)))
-
-        total_count = len(filtered)
-        items = filtered[offset:offset + limit]
+        reached_scan_limit = scanned_count >= scan_limit
+        has_more = matched_count > offset + len(items) or reached_scan_limit
         return {
             "items": items,
-            "total_count": total_count,
-            "has_more": offset + len(items) < total_count,
+            "total_count": matched_count,
+            "has_more": has_more,
         }
 
     @staticmethod

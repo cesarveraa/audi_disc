@@ -14,7 +14,14 @@ SELLER_ROLE = "Vendedor"
 ALLOWED_ROLES = {ADMIN_ROLE, SELLER_ROLE}
 
 bearer_scheme = HTTPBearer(auto_error=False)
-PUBLIC_PATHS = ("/", "/health", "/openapi.json")
+PUBLIC_PATHS = (
+    "/",
+    "/health",
+    "/api/v1/health",
+    "/favicon.ico",
+    "/favicon.png",
+    "/openapi.json",
+)
 PUBLIC_PATH_PREFIXES = ("/docs", "/redoc", "/api/v1/public/")
 
 

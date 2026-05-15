@@ -40,8 +40,14 @@ function CatalogRoutes() {
   const [products, setProducts] = useState<CatalogProduct[]>([]);
   const [loadState, setLoadState] = useState<LoadState>('idle');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const shouldLoadSharedProducts = location.pathname === '/' || location.pathname.startsWith('/productos/');
 
   useEffect(() => {
+    if (!shouldLoadSharedProducts) {
+      setLoadState('idle');
+      return;
+    }
+
     let active = true;
     setLoadState('loading');
     fetchCatalogProducts({ page: 1, limit: 10 })
@@ -63,7 +69,7 @@ function CatalogRoutes() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [shouldLoadSharedProducts]);
 
   const pageProps: CatalogPageProps = {
     products,

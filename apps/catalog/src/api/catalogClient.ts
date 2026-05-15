@@ -5,6 +5,7 @@ function normalizeApiBaseUrl(value: string) {
 }
 
 const configuredApiBaseUrl = import.meta.env.VITE_API_BASE_URL;
+const REQUEST_TIMEOUT_MS = Number(import.meta.env.VITE_API_TIMEOUT_MS ?? 12000);
 
 export const API_BASE_URL = configuredApiBaseUrl?.trim()
   ? normalizeApiBaseUrl(configuredApiBaseUrl)
@@ -68,11 +69,24 @@ export async function fetchCatalogProducts(params: CatalogProductsRequest = {}):
     throw new Error('Falta configurar VITE_API_BASE_URL para cargar el catalogo.');
   }
 
-  const response = await fetch(buildProductsUrl(params), {
-    headers: {
-      Accept: 'application/json',
-    },
-  });
+  const controller = new AbortController();
+  const timeoutId = globalThis.setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  let response: Response;
+  try {
+    response = await fetch(buildProductsUrl(params), {
+      headers: {
+        Accept: 'application/json',
+      },
+      signal: controller.signal,
+    });
+  } catch (error) {
+    if (error instanceof DOMException && error.name === 'AbortError') {
+      throw new Error('El catalogo esta tardando demasiado en responder. Intenta nuevamente en unos segundos.');
+    }
+    throw error;
+  } finally {
+    globalThis.clearTimeout(timeoutId);
+  }
 
   if (!response.ok) {
     throw new Error(await readServerMessage(response.clone()));

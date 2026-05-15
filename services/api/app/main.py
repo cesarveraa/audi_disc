@@ -94,6 +94,7 @@ def create_app(repository: InventoryRepository | None = None) -> FastAPI:
     app.include_router(dashboard.router)
     app.include_router(notifications.router)
     api_v1_prefix = "/api/v1"
+    app.include_router(health.router, prefix=api_v1_prefix)
     app.include_router(me.router, prefix=api_v1_prefix)
     app.include_router(inventory.router, prefix=api_v1_prefix)
     app.include_router(products.router, prefix=api_v1_prefix)
