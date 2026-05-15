@@ -10,6 +10,7 @@ import {
   Play,
   Printer,
   ReceiptText,
+  ScanBarcode,
   Search,
   ShoppingBag,
   Sparkles,
@@ -22,6 +23,7 @@ import { filterProducts, formatBsFromCentavos } from '@audidisc/shared';
 
 import { useRequiredAuth } from '@app/providers/AuthProvider';
 import { AppButton } from '@core/ui/AppButton';
+import { findProductByBarcode, scanBarcodeValue } from '@features/barcode/barcodeScanner';
 import { createCustomer, fetchCustomers } from '@features/customers/services/customersService';
 import { fetchInventoryProducts } from '@features/inventory/services/inventoryService';
 import { CartItemCard } from '@features/sales/components/CartItemCard';
@@ -95,6 +97,7 @@ export default function POSScreen() {
   const [heldCarts, setHeldCarts] = useState<SaleCart[]>([]);
   const [addedProductId, setAddedProductId] = useState<string | null>(null);
   const [isLoadingProducts, setLoadingProducts] = useState(true);
+  const [isScanning, setScanning] = useState(false);
   const [isPaymentOpen, setPaymentOpen] = useState(false);
   const [recibidoCentavos, setRecibidoCentavos] = useState(0);
   const [metodo, setMetodo] = useState<PaymentMethod>('Efectivo');
@@ -174,7 +177,7 @@ export default function POSScreen() {
     setLastSale(null);
     if (!canAddProduct(cart, product)) {
       setError('Stock insuficiente para agregar mas unidades.');
-      return;
+      return false;
     }
 
     updateCart(current => {
@@ -198,6 +201,30 @@ export default function POSScreen() {
     playClink();
     setAddedProductId(product.id);
     window.setTimeout(() => setAddedProductId(null), 450);
+    return true;
+  }
+
+  async function handleBarcodeScan() {
+    setScanning(true);
+    setError(null);
+    setSuccessMessage(null);
+    try {
+      const code = await scanBarcodeValue();
+      const product = findProductByBarcode(products, code);
+      if (!product) {
+        setQuery(code);
+        setError(`No encontre un producto activo con el codigo ${code}.`);
+        return;
+      }
+      setQuery(product.sku ?? product.nombre);
+      if (addProduct(product)) {
+        setSuccessMessage(`${product.nombre} agregado desde camara.`);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No se pudo escanear el codigo');
+    } finally {
+      setScanning(false);
+    }
   }
 
   function increment(productId: string) {
@@ -427,17 +454,28 @@ export default function POSScreen() {
                 Busca productos, arma el carrito y cobra con vuelto calculado en centavos.
               </p>
             </div>
-            <div className="rounded-panel border border-white/70 bg-white/80 p-4 shadow-card backdrop-blur-xl">
-              <span className="text-sm font-semibold text-gray-500">Total carrito</span>
-              <strong className="mt-1 block text-3xl font-semibold text-gray-950">
-                {formatBsFromCentavos(totalCentavos)}
-              </strong>
-              <span className="mt-1 block text-sm font-medium text-gray-500">
-                {activeCart.label} / {cartCount} unidades
-              </span>
-              <span className="mt-1 block text-xs font-semibold text-gray-400">
-                IVA estimado {formatBsFromCentavos(taxCentavos)}
-              </span>
+            <div className="grid gap-3 sm:grid-cols-[auto_auto] xl:grid-cols-1">
+              <AppButton
+                variant="primary"
+                icon={<ScanBarcode className="h-4 w-4" />}
+                isLoading={isScanning}
+                disabled={isLoadingProducts}
+                onClick={() => void handleBarcodeScan()}
+              >
+                Escanear con Camara
+              </AppButton>
+              <div className="rounded-panel border border-white/70 bg-white/80 p-4 shadow-card backdrop-blur-xl">
+                <span className="text-sm font-semibold text-gray-500">Total carrito</span>
+                <strong className="mt-1 block text-3xl font-semibold text-gray-950">
+                  {formatBsFromCentavos(totalCentavos)}
+                </strong>
+                <span className="mt-1 block text-sm font-medium text-gray-500">
+                  {activeCart.label} / {cartCount} unidades
+                </span>
+                <span className="mt-1 block text-xs font-semibold text-gray-400">
+                  IVA estimado {formatBsFromCentavos(taxCentavos)}
+                </span>
+              </div>
             </div>
           </header>
 

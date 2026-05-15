@@ -10,6 +10,7 @@
     "build": "npm run build:web",
     "build:web": "npm run build --workspace @audidisc/web",
     "build:catalog": "npm run build --workspace @audidisc/catalog",
+    "sync:web:android": "npm run cap:sync --workspace @audidisc/web",
     "dev:catalog": "npm run dev --workspace @audidisc/catalog",
     "test": "npm run test --workspaces --if-present",
     "typecheck": "npm run typecheck --workspaces --if-present"

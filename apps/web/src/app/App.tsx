@@ -9,6 +9,8 @@ const ReportsDashboardScreen = lazy(() => import('@features/reports/screens/Repo
 const SalesHistoryScreen = lazy(() => import('@features/sales/screens/SalesHistoryScreen'));
 const POSScreen = lazy(() => import('@features/sales/screens/POSScreen'));
 const CustomersScreen = lazy(() => import('@features/customers/screens/CustomersScreen'));
+const AuditLogScreen = lazy(() => import('@features/audit/screens/AuditLogScreen'));
+const AdvancedAnalyticsScreen = lazy(() => import('@features/analytics/screens/AdvancedAnalyticsScreen'));
 
 function useCurrentPath() {
   const [path, setPath] = useState(() => window.location.pathname);
@@ -69,13 +71,26 @@ function AppContent() {
     return user ? <LazyShell><InventoryScreen /></LazyShell> : <LoginScreen />;
   }
 
-  if (path.startsWith('/reportes') || path.startsWith('/historial')) {
+  if (
+    path.startsWith('/reportes') ||
+    path.startsWith('/historial') ||
+    path.startsWith('/auditoria') ||
+    path.startsWith('/bi')
+  ) {
     if (!isAdmin) {
       return <LazyShell><InventoryScreen /></LazyShell>;
     }
     return (
       <LazyShell>
-        {path.startsWith('/historial') ? <SalesHistoryScreen /> : <ReportsDashboardScreen />}
+        {path.startsWith('/historial') ? (
+          <SalesHistoryScreen />
+        ) : path.startsWith('/auditoria') ? (
+          <AuditLogScreen />
+        ) : path.startsWith('/bi') ? (
+          <AdvancedAnalyticsScreen />
+        ) : (
+          <ReportsDashboardScreen />
+        )}
       </LazyShell>
     );
   }

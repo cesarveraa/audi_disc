@@ -5,7 +5,7 @@ import time
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import customers, dashboard, health, inventory, me, notifications, products, public, reports, sales
+from app.api import analytics, audit, customers, dashboard, health, inventory, me, notifications, products, public, reports, sales
 from app.core.config import get_settings
 from app.core.security import firebase_auth_middleware
 from app.repositories.base import InventoryRepository
@@ -89,6 +89,8 @@ def create_app(repository: InventoryRepository | None = None) -> FastAPI:
     app.include_router(customers.router)
     app.include_router(sales.router)
     app.include_router(reports.router)
+    app.include_router(audit.router)
+    app.include_router(analytics.router)
     app.include_router(dashboard.router)
     app.include_router(notifications.router)
     api_v1_prefix = "/api/v1"
@@ -98,6 +100,8 @@ def create_app(repository: InventoryRepository | None = None) -> FastAPI:
     app.include_router(customers.router, prefix=api_v1_prefix)
     app.include_router(sales.router, prefix=api_v1_prefix)
     app.include_router(reports.router, prefix=api_v1_prefix)
+    app.include_router(audit.router, prefix=api_v1_prefix)
+    app.include_router(analytics.router, prefix=api_v1_prefix)
     app.include_router(dashboard.router, prefix=api_v1_prefix)
     app.include_router(notifications.router, prefix=api_v1_prefix)
     app.include_router(public.router, prefix=api_v1_prefix)

@@ -1,7 +1,8 @@
+import type { CatalogProduct } from '@audidisc/shared';
+import { AnimatePresence, motion } from 'framer-motion';
+import { Loader2 } from 'lucide-react';
 import { lazy, Suspense, useEffect, useState } from 'react';
 import { BrowserRouter, Navigate, Route, Routes, useLocation, useParams } from 'react-router-dom';
-import type { CatalogProduct } from '@audidisc/shared';
-import { Loader2 } from 'lucide-react';
 
 import { fetchCatalogProducts } from '../api/catalogClient';
 import { FloatingWhatsAppButton } from '../components/WhatsAppButton';
@@ -55,7 +56,7 @@ function CatalogRoutes() {
         if (!active) {
           return;
         }
-        setErrorMessage(error instanceof Error ? error.message : 'No se pudo cargar el catálogo.');
+        setErrorMessage(error instanceof Error ? error.message : 'No se pudo cargar el catalogo.');
         setLoadState('error');
       });
 
@@ -72,20 +73,30 @@ function CatalogRoutes() {
   const activeProductSlug = location.pathname.startsWith('/productos/')
     ? decodeURIComponent(location.pathname.replace('/productos/', '').replace(/\/+$/, ''))
     : null;
-  const activeProduct = routeState?.product ?? (
-    activeProductSlug ? products.find(product => productSlug(product) === activeProductSlug) : undefined
-  );
+  const activeProduct =
+    routeState?.product ??
+    (activeProductSlug ? products.find(product => productSlug(product) === activeProductSlug) : undefined);
 
   return (
     <>
       <Suspense fallback={<RouteFallback />}>
-        <Routes>
-          <Route path="/" element={<Home {...pageProps} />} />
-          <Route path="/productos" element={<Catalog {...pageProps} />} />
-          <Route path="/productos/:slug" element={<ProductDetail {...pageProps} />} />
-          <Route path="/producto/:slug" element={<LegacyProductRedirect />} />
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
+        <AnimatePresence mode="wait" initial={false}>
+          <motion.div
+            key={location.pathname}
+            initial={{ opacity: 0, y: 14 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.24, ease: 'easeOut' }}
+          >
+            <Routes location={location}>
+              <Route path="/" element={<Home {...pageProps} />} />
+              <Route path="/productos" element={<Catalog {...pageProps} />} />
+              <Route path="/productos/:slug" element={<ProductDetail {...pageProps} />} />
+              <Route path="/producto/:slug" element={<LegacyProductRedirect />} />
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </motion.div>
+        </AnimatePresence>
       </Suspense>
       <FloatingWhatsAppButton product={activeProduct} />
     </>

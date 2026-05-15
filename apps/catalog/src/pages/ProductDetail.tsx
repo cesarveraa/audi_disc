@@ -1,20 +1,28 @@
 import type { CatalogProduct } from '@audidisc/shared';
 import { formatBsFromCentavos } from '@audidisc/shared';
 import { motion } from 'framer-motion';
-import { ArrowLeft, BadgeCheck, CheckCircle2, Loader2, MapPin, ShieldCheck } from 'lucide-react';
+import { ArrowLeft, BadgeCheck, CheckCircle2, Loader2, MapPin, ShieldCheck, Sparkles } from 'lucide-react';
 import { Link, useLocation, useParams } from 'react-router-dom';
 
 import type { CatalogPageProps } from '../app/App';
 import { ProductImage } from '../components/ProductImage';
+import { SiteFooter } from '../components/SiteFooter';
 import { SiteNav } from '../components/SiteNav';
 import { ProductWhatsAppButton } from '../components/WhatsAppButton';
 import { business } from '../config/business';
 import { SEOHandler } from '../seo/SEOHandler';
 import { productJsonLd } from '../seo/structuredData';
-import { imageForProduct, productDescription, productDisplayName, productPath, productSeoTitle, productSlug } from '../utils/catalog';
+import {
+  imageForProduct,
+  productDescription,
+  productDisplayName,
+  productPath,
+  productSeoTitle,
+  productSlug,
+} from '../utils/catalog';
 
 const reveal = {
-  hidden: { opacity: 0, y: 18 },
+  hidden: { opacity: 0, y: 22 },
   visible: { opacity: 1, y: 0 },
 };
 
@@ -29,27 +37,28 @@ function LoadingProduct() {
 
 function ProductNotFound() {
   return (
-    <div className="min-h-screen bg-catalog-bg text-catalog-text">
+    <div className="min-h-screen bg-catalog-bg text-white">
       <SEOHandler
         title="Producto no encontrado | Audi Disc Sucre"
-        description="El producto solicitado no está disponible en el catálogo público de Audi Disc Sucre."
+        description="El producto solicitado no esta disponible en el catalogo publico de Audi Disc Sucre."
         image="/audidisc.jpg"
         canonical="/productos"
       />
       <SiteNav />
       <main className="mx-auto max-w-xl px-4 py-16 sm:px-6">
-        <div className="rounded-lg border border-white/10 bg-catalog-card p-8 shadow-card">
+        <div className="rounded-3xl border border-white/10 bg-white/[0.045] p-8 shadow-card backdrop-blur-xl">
           <h1 className="text-3xl font-semibold text-white">Producto no encontrado</h1>
-          <p className="mt-3 text-catalog-muted">Puede que el producto ya no esté disponible en el catálogo.</p>
+          <p className="mt-3 text-white/70">Puede que el producto ya no este disponible en el catalogo.</p>
           <Link
             to="/productos"
-            className="mt-6 inline-flex h-11 items-center gap-2 rounded-lg bg-audi-red px-4 text-sm font-semibold text-white transition hover:bg-audi-redDark"
+            className="mt-6 inline-flex h-11 items-center gap-2 rounded-full bg-audi-red px-5 text-sm font-semibold text-white transition hover:bg-audi-redDark"
           >
             <ArrowLeft className="h-4 w-4" />
-            Volver al catálogo
+            Volver al catalogo
           </Link>
         </div>
       </main>
+      <SiteFooter />
     </div>
   );
 }
@@ -78,7 +87,7 @@ export default function ProductDetail({ products, loadState, errorMessage }: Cat
   const description = productDescription(product);
 
   return (
-    <div className="min-h-screen bg-catalog-bg pb-24 text-catalog-text">
+    <div className="min-h-screen bg-catalog-bg text-white">
       <SEOHandler
         title={title}
         description={description}
@@ -90,21 +99,26 @@ export default function ProductDetail({ products, loadState, errorMessage }: Cat
 
       <SiteNav />
 
-      <main className="mx-auto grid max-w-7xl gap-8 px-4 py-10 sm:px-6 lg:grid-cols-[minmax(0,1.04fr)_minmax(340px,0.96fr)] lg:px-8 lg:py-14">
+      <main className="mx-auto grid max-w-7xl gap-8 px-4 py-8 sm:px-6 lg:grid-cols-[minmax(0,1.04fr)_minmax(340px,0.96fr)] lg:px-8 lg:py-14">
         <motion.section
-          className="overflow-hidden rounded-lg border border-white/10 bg-catalog-card shadow-card"
+          className="overflow-hidden rounded-3xl border border-white/10 bg-white/[0.045] shadow-card backdrop-blur-xl"
           initial="hidden"
           animate="visible"
           variants={reveal}
           transition={{ duration: 0.5 }}
         >
-          <div className="aspect-[4/3] bg-black">
+          <div className="relative aspect-[4/3] bg-black">
             <ProductImage
               product={product}
               className="h-full w-full object-cover"
               loading="eager"
               sizes="(min-width: 1024px) 50vw, 100vw"
             />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+            <span className="absolute left-4 top-4 inline-flex items-center gap-2 rounded-full bg-audi-red px-4 py-2 text-xs font-semibold uppercase tracking-wide text-white shadow-red">
+              <Sparkles className="h-3.5 w-3.5" />
+              Disponible en Sucre
+            </span>
           </div>
         </motion.section>
 
@@ -117,29 +131,29 @@ export default function ProductDetail({ products, loadState, errorMessage }: Cat
         >
           <Link
             to="/productos"
-            className="mb-6 inline-flex items-center gap-2 text-sm font-semibold text-catalog-muted transition hover:text-audi-red"
+            className="mb-6 inline-flex items-center gap-2 text-sm font-semibold text-white/60 transition hover:text-audi-red"
           >
             <ArrowLeft className="h-4 w-4" />
-            Volver al catálogo
+            Volver al catalogo
           </Link>
 
-          <p className="text-sm font-semibold uppercase text-audi-red">
+          <p className="text-sm font-semibold uppercase tracking-wide text-audi-red">
             {[product.marca, product.categoria].filter(Boolean).join(' / ') || 'Audi Disc Sucre'}
           </p>
           <h1 className="mt-3 text-3xl font-semibold leading-tight text-white sm:text-5xl">
             {productDisplayName(product)}
           </h1>
-          <p className="mt-5 text-base leading-7 text-catalog-muted">{description}</p>
+          <p className="mt-5 text-base leading-7 text-white/70">{description}</p>
 
-          <div className="mt-7 rounded-lg border border-white/10 bg-catalog-card p-5 shadow-card">
+          <div className="mt-7 rounded-3xl border border-white/10 bg-white/[0.045] p-5 shadow-card backdrop-blur-xl">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <span className="block text-sm font-medium text-catalog-muted">Precio en Sucre</span>
+                <span className="block text-sm font-medium text-white/60">Precio en Sucre</span>
                 <strong className="mt-1 block text-3xl font-semibold text-white">
                   {formatBsFromCentavos(product.precioVentaCentavos)}
                 </strong>
               </div>
-              <span className="inline-flex items-center gap-2 rounded-lg bg-emerald-500/20 px-3 py-2 text-sm font-semibold text-emerald-200 ring-1 ring-emerald-400/25">
+              <span className="inline-flex items-center gap-2 rounded-full bg-emerald-500/20 px-3 py-2 text-sm font-semibold text-emerald-100 ring-1 ring-emerald-400/25">
                 <CheckCircle2 className="h-4 w-4" />
                 Disponible
               </span>
@@ -149,27 +163,29 @@ export default function ProductDetail({ products, loadState, errorMessage }: Cat
           </div>
 
           <div className="mt-5 grid gap-3 sm:grid-cols-3">
-            <div className="rounded-lg border border-white/10 bg-catalog-card p-4">
+            <article className="rounded-2xl border border-white/10 bg-white/[0.045] p-4">
               <BadgeCheck className="h-5 w-5 text-audi-red" />
-              <strong className="mt-3 block text-sm text-white">Garantía Audi Disc</strong>
-            </div>
-            <div className="rounded-lg border border-white/10 bg-catalog-card p-4">
+              <strong className="mt-3 block text-sm text-white">Garantia Audi Disc</strong>
+            </article>
+            <article className="rounded-2xl border border-white/10 bg-white/[0.045] p-4">
               <ShieldCheck className="h-5 w-5 text-audi-red" />
               <strong className="mt-3 block text-sm text-white">Originalidad 100%</strong>
-            </div>
-            <div className="rounded-lg border border-white/10 bg-catalog-card p-4">
+            </article>
+            <article className="rounded-2xl border border-white/10 bg-white/[0.045] p-4">
               <MapPin className="h-5 w-5 text-audi-red" />
               <strong className="mt-3 block text-sm text-white">{business.city}</strong>
-            </div>
+            </article>
           </div>
 
           {loadState === 'error' && (
-            <p className="mt-5 rounded-lg border border-audi-red/40 bg-audi-red/10 p-4 text-sm font-semibold text-white">
+            <p className="mt-5 rounded-2xl border border-audi-red/40 bg-audi-red/10 p-4 text-sm font-semibold text-white">
               {errorMessage}
             </p>
           )}
         </motion.section>
       </main>
+
+      <SiteFooter />
     </div>
   );
 }

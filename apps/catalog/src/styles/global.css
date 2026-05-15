@@ -4,8 +4,8 @@
 
 @layer base {
   :root {
-    color: #e8e8e8;
-    background: #0a0a0a;
+    color: #ffffff;
+    background: #050505;
     font-family:
       Inter, Montserrat, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
       sans-serif;
@@ -19,13 +19,16 @@
 
   html {
     scroll-behavior: smooth;
+    background: #050505;
   }
 
   body {
     margin: 0;
     min-width: 320px;
     min-height: 100vh;
-    background: #0a0a0a;
+    background: #050505;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 
   button,
@@ -48,5 +51,28 @@
 
   select {
     color-scheme: dark;
+  }
+
+  ::selection {
+    color: #ffffff;
+    background: #e4002b;
+  }
+
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: #050505;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: #2a2a2a;
+    border-radius: 999px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: #e4002b;
   }
 }

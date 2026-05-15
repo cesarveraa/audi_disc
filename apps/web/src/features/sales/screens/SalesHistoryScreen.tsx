@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ArrowLeft,
+  BarChart3,
   CalendarRange,
   CreditCard,
   LayoutDashboard,
@@ -115,6 +116,14 @@ export default function SalesHistoryScreen() {
               <span className="h-2 w-2 rounded-full bg-audi-red" />
               <ShieldCheck className="h-4 w-4 text-gray-500" />
               Ventas Pasadas
+            </a>
+            <a className="flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold text-gray-600 transition hover:bg-white/70" href="/bi">
+              <BarChart3 className="h-4 w-4" />
+              Graficos Avanzados
+            </a>
+            <a className="flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold text-gray-600 transition hover:bg-white/70" href="/auditoria">
+              <ShieldCheck className="h-4 w-4" />
+              Auditoria
             </a>
             <button
               className="flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold text-gray-600 transition hover:bg-white/70"

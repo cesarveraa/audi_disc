@@ -50,6 +50,30 @@ class InMemoryInventoryRepository:
         self.inventory_logs: dict[str, dict] = {}
         self.audit_logs: list[dict] = []
 
+    def _append_audit(
+        self,
+        *,
+        user: AuthenticatedUser,
+        action: str,
+        entity: str,
+        entity_id: str,
+        previous_data: dict,
+        new_data: dict,
+    ) -> None:
+        self.audit_logs.append(
+            {
+                "id": f"a{len(self.audit_logs) + 1}",
+                "userId": user.uid,
+                "userEmail": user.email,
+                "action": action,
+                "entity": entity,
+                "entityId": entity_id,
+                "previous_data": previous_data,
+                "new_data": new_data,
+                "timestamp": "2026-05-07T12:00:00",
+            }
+        )
+
     def list_products(self, estado: bool | None, query: str | None, include_financials: bool) -> list[dict]:
         normalized = (query or "").casefold().strip()
         output = []
@@ -127,9 +151,28 @@ class InMemoryInventoryRepository:
         next_doc = {**self.products[product_id], **update_data}
         if next_doc["precioVentaCentavos"] < next_doc["precioCompraCentavos"]:
             raise HTTPException(status_code=422, detail="precioVentaCentavos must be greater than or equal to precioCompraCentavos")
+        previous_data = {
+            key: self.products[product_id].get(key)
+            for key in update_data
+            if self.products[product_id].get(key) != next_doc.get(key)
+        }
+        new_data = {
+            key: next_doc.get(key)
+            for key in previous_data
+        }
         next_doc["updatedBy"] = user.uid
         next_doc["updatedAt"] = datetime.now().isoformat()
         self.products[product_id] = next_doc
+        if previous_data:
+            action = "PRICE_CHANGE" if {"precioCompraCentavos", "precioVentaCentavos"} & set(previous_data) else "STOCK_ADJUST" if "cantidad" in previous_data else "UPDATE"
+            self._append_audit(
+                user=user,
+                action=action,
+                entity="productos",
+                entity_id=product_id,
+                previous_data=previous_data,
+                new_data=new_data,
+            )
         return normalize_product_doc(product_id, next_doc, include_financials)
 
     def update_inventory(self, payload: InventoryUpdate, user: AuthenticatedUser, include_financials: bool) -> dict:
@@ -163,6 +206,19 @@ class InMemoryInventoryRepository:
                 "createdAt": "2026-05-07T09:30:00",
             }
             self.inventory_logs[log_id] = deepcopy(log)
+            self._append_audit(
+                user=user,
+                action="STOCK_ADJUST",
+                entity="productos",
+                entity_id=payload.productoId,
+                previous_data={"cantidad": previous},
+                new_data={
+                    "cantidad": next_quantity,
+                    "cantidadDelta": payload.cantidadDelta,
+                    "motivo": payload.motivo,
+                    "referencia": payload.referencia,
+                },
+            )
             return {
                 "producto": normalize_product_doc(payload.productoId, product, include_financials),
                 "log": log,
@@ -171,8 +227,17 @@ class InMemoryInventoryRepository:
     def soft_delete_product(self, product_id: str, user: AuthenticatedUser) -> dict:
         if product_id not in self.products:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Product not found")
+        previous_estado = self.products[product_id]["estado"]
         self.products[product_id]["estado"] = False
         self.products[product_id]["updatedBy"] = user.uid
+        self._append_audit(
+            user=user,
+            action="DELETE",
+            entity="productos",
+            entity_id=product_id,
+            previous_data={"estado": previous_estado},
+            new_data={"estado": False},
+        )
         return normalize_product_doc(product_id, self.products[product_id], True)
 
     def create_sale(self, payload: SaleCreate, user: AuthenticatedUser, include_financials: bool) -> dict:
@@ -268,16 +333,19 @@ class InMemoryInventoryRepository:
             sale["voidedBy"] = user.uid
             sale["voidedAt"] = "2026-05-07T11:00:00"
             sale["updatedBy"] = user.uid
-            self.audit_logs.append(
-                {
-                    "action": "SALE_VOID",
-                    "saleId": sale_id,
-                    "adminUid": user.uid,
-                    "restoredItems": [
+            self._append_audit(
+                user=user,
+                action="DELETE",
+                entity="ventas",
+                entity_id=sale_id,
+                previous_data={
+                    "estado": True,
+                    "productos": [
                         {"productoId": item["productoId"], "cantidad": item["cantidad"]}
                         for item in sale["productos"]
                     ],
-                }
+                },
+                new_data={"estado": False, "voidedBy": user.uid},
             )
             self.sales[sale_id] = deepcopy(sale)
             return strip_sale_financials(deepcopy(sale), include_financials)
@@ -341,6 +409,162 @@ class InMemoryInventoryRepository:
             "ventasHoy": ventas_hoy,
             "ingresosSemanales": weekly,
             "stockBajo": self.dashboard_summary()["stockBajo"],
+        }
+
+    def list_audit_logs(self, page: int, limit: int) -> dict:
+        offset = (page - 1) * limit
+        items = list(reversed(self.audit_logs))[offset:offset + limit]
+        return {
+            "items": deepcopy(items),
+            "total_count": len(self.audit_logs),
+            "has_more": offset + len(items) < len(self.audit_logs),
+        }
+
+    def analytics_dashboard(self) -> dict:
+        active_sales = [sale for sale in self.sales.values() if sale["estado"]]
+        product_metrics: dict[str, dict] = {}
+        monthly: dict[str, dict] = {}
+        last_sale_by_product: dict[str, str] = {}
+        demand_by_product: dict[str, int] = {}
+        total_revenue = 0
+        total_cost = 0
+        total_profit = 0
+
+        for sale in active_sales:
+            month_key = sale["fechaLocal"][:7]
+            month = monthly.setdefault(
+                month_key,
+                {
+                    "mes": month_key,
+                    "label": "May",
+                    "totalCentavos": 0,
+                    "utilidadCentavos": 0,
+                    "cantidadVentas": 0,
+                    "audifonosCantidad": 0,
+                    "audifonosCentavos": 0,
+                },
+            )
+            month["cantidadVentas"] += 1
+            for item in sale["productos"]:
+                product_id = item["productoId"]
+                quantity = int(item["cantidad"])
+                revenue = int(item["subtotalCentavos"])
+                cost = int(item["precioCompraCentavos"]) * quantity
+                profit = int(item["utilidadCentavos"])
+                total_revenue += revenue
+                total_cost += cost
+                total_profit += profit
+                month["totalCentavos"] += revenue
+                month["utilidadCentavos"] += profit
+                if "audif" in item["nombre"].casefold():
+                    month["audifonosCantidad"] += quantity
+                    month["audifonosCentavos"] += revenue
+                metric = product_metrics.setdefault(
+                    product_id,
+                    {
+                        "productoId": product_id,
+                        "nombre": item["nombre"],
+                        "marca": item["marca"],
+                        "categoria": item["categoria"],
+                        "cantidadVendida": 0,
+                        "totalCentavos": 0,
+                        "utilidadCentavos": 0,
+                    },
+                )
+                metric["cantidadVendida"] += quantity
+                metric["totalCentavos"] += revenue
+                metric["utilidadCentavos"] += profit
+                demand_by_product[product_id] = demand_by_product.get(product_id, 0) + quantity
+                last_sale_by_product[product_id] = sale["fechaLocal"]
+
+        sorted_products = sorted(product_metrics.values(), key=lambda item: item["totalCentavos"], reverse=True)
+        pareto_items = []
+        cumulative = 0
+        for index, item in enumerate(sorted_products):
+            previous_percent = round((cumulative / total_revenue) * 100, 2) if total_revenue else 0.0
+            cumulative += item["totalCentavos"]
+            cumulative_percent = round((cumulative / total_revenue) * 100, 2) if total_revenue else 0.0
+            pareto_items.append(
+                {
+                    **item,
+                    "revenueSharePorcentaje": round((item["totalCentavos"] / total_revenue) * 100, 2) if total_revenue else 0.0,
+                    "cumulativeSharePorcentaje": cumulative_percent,
+                    "isTopTwenty": index == 0,
+                    "paretoClass": "A" if previous_percent < 80 else "B",
+                }
+            )
+
+        reorder_alerts = []
+        dead_stock = []
+        for product_id, product in self.products.items():
+            if not product["estado"]:
+                continue
+            demand = demand_by_product.get(product_id, 0)
+            avg_daily = demand / 90
+            reorder_point = round((avg_daily * 7) + product["stockMinimo"])
+            if product["cantidad"] <= reorder_point:
+                reorder_alerts.append(
+                    {
+                        "productoId": product_id,
+                        "nombre": product["nombre"],
+                        "marca": product["marca"],
+                        "categoria": product["categoria"],
+                        "stockActual": product["cantidad"],
+                        "demandaMediaDiaria": round(avg_daily, 2),
+                        "tiempoEntregaDias": 7,
+                        "stockSeguridad": product["stockMinimo"],
+                        "reorderPoint": reorder_point,
+                        "sugerenciaCompra": max(reorder_point - product["cantidad"], 0),
+                    }
+                )
+            if product["cantidad"] > 0 and product_id not in last_sale_by_product:
+                dead_stock.append(
+                    {
+                        "productoId": product_id,
+                        "nombre": product["nombre"],
+                        "marca": product["marca"],
+                        "categoria": product["categoria"],
+                        "stockActual": product["cantidad"],
+                        "ultimaVentaFecha": None,
+                        "diasSinVenta": None,
+                        "valorInventarioCentavos": product["cantidad"] * product["precioVentaCentavos"],
+                    }
+                )
+
+        return {
+            "generatedAt": "2026-05-07T12:00:00",
+            "pareto": {
+                "totalProductos": len(sorted_products),
+                "topTwentyCount": 1 if sorted_products else 0,
+                "topTwentyRevenueSharePorcentaje": pareto_items[0]["revenueSharePorcentaje"] if pareto_items else 0.0,
+                "items": pareto_items,
+            },
+            "tendencias": {
+                "ventasPorMes": list(monthly.values()),
+                "mesesFuertesAudifonos": [
+                    {
+                        "mes": item["mes"],
+                        "label": item["label"],
+                        "cantidad": item["audifonosCantidad"],
+                        "totalCentavos": item["audifonosCentavos"],
+                    }
+                    for item in monthly.values()
+                    if item["audifonosCantidad"] > 0
+                ],
+            },
+            "margenes": {
+                "ingresosCentavos": total_revenue,
+                "costoCentavos": total_cost,
+                "utilidadNetaCentavos": total_profit,
+                "margenPorcentaje": round((total_profit / total_revenue) * 100, 2) if total_revenue else 0.0,
+                "ventasAnalizadas": len(active_sales),
+            },
+            "inventario": {
+                "leadTimeDias": 7,
+                "lookbackDiasDemanda": 90,
+                "reorderAlerts": reorder_alerts,
+                "deadStock": dead_stock,
+            },
         }
 
     def sales_history(self, date_from: str, date_to: str, include_financials: bool) -> dict:
@@ -462,8 +686,12 @@ def test_cors_allows_localhost_and_loopback_frontend_origins() -> None:
     client, _repo = make_client("Administrador")
 
     for origin in (
+        "capacitor://localhost",
+        "ionic://localhost",
+        "http://localhost",
         "http://localhost:5173",
         "http://127.0.0.1:5173",
+        "http://10.0.2.2:5173",
         "http://localhost:5174",
         "http://127.0.0.1:5174",
     ):
@@ -519,8 +747,21 @@ def test_admin_can_see_cost_and_margin() -> None:
     assert product["margenPorcentaje"] == pytest.approx(33.33)
 
 
+def test_product_price_change_writes_audit_log() -> None:
+    client, repo = make_client("Administrador")
+    response = client.patch("/productos/p1", json={"precioVentaCentavos": 1800})
+
+    assert response.status_code == 200
+    assert repo.audit_logs[-1]["action"] == "PRICE_CHANGE"
+    assert repo.audit_logs[-1]["entity"] == "productos"
+    assert repo.audit_logs[-1]["entityId"] == "p1"
+    assert repo.audit_logs[-1]["userId"] == "test-user"
+    assert repo.audit_logs[-1]["previous_data"] == {"precioVentaCentavos": 1500}
+    assert repo.audit_logs[-1]["new_data"] == {"precioVentaCentavos": 1800}
+
+
 def test_soft_delete_preserves_product_with_inactive_state() -> None:
-    client, _repo = make_client("Administrador")
+    client, repo = make_client("Administrador")
     delete_response = client.delete("/productos/p1")
     list_response = client.get("/productos?estado=false")
 
@@ -529,6 +770,9 @@ def test_soft_delete_preserves_product_with_inactive_state() -> None:
     assert list_response.status_code == 200
     assert list_response.json()[0]["id"] == "p1"
     assert list_response.json()[0]["estado"] is False
+    assert repo.audit_logs[-1]["action"] == "DELETE"
+    assert repo.audit_logs[-1]["previous_data"] == {"estado": True}
+    assert repo.audit_logs[-1]["new_data"] == {"estado": False}
 
 
 def test_sale_decrements_inventory_and_calculates_change() -> None:
@@ -672,6 +916,10 @@ def test_inventory_update_adjusts_stock_and_logs_movement() -> None:
     assert payload["log"]["cantidadDelta"] == 7
     assert payload["log"]["cantidadNueva"] == 12
     assert repo.inventory_logs["l1"]["createdBy"] == "test-user"
+    assert repo.audit_logs[-1]["action"] == "STOCK_ADJUST"
+    assert repo.audit_logs[-1]["previous_data"] == {"cantidad": 5}
+    assert repo.audit_logs[-1]["new_data"]["cantidad"] == 12
+    assert repo.audit_logs[-1]["new_data"]["referencia"] == "FAC-100"
 
 
 def test_inventory_update_rejects_negative_stock() -> None:
@@ -746,6 +994,63 @@ def test_reports_dashboard_admin_includes_profit_and_weekly_revenue() -> None:
     assert len(payload["ingresosSemanales"]) == 7
 
 
+def test_audit_logs_are_admin_only_and_paginated() -> None:
+    admin_client, repo = make_client("Administrador")
+    admin_client.patch("/productos/p1", json={"precioVentaCentavos": 1800})
+    seller_client, _repo = make_client("Vendedor", repo)
+
+    seller_response = seller_client.get("/api/v1/audit-logs")
+    admin_response = admin_client.get("/api/v1/audit-logs?page=1&limit=1")
+
+    assert seller_response.status_code == 403
+    assert admin_response.status_code == 200
+    payload = admin_response.json()
+    assert payload["total_count"] == 1
+    assert payload["has_more"] is False
+    assert payload["items"][0]["action"] == "PRICE_CHANGE"
+    assert payload["items"][0]["previous_data"] == {"precioVentaCentavos": 1500}
+
+
+def test_analytics_dashboard_is_admin_only_and_returns_bi_metrics() -> None:
+    admin_client, repo = make_client("Administrador")
+    repo.products["p3"] = {
+        "nombre": "Parlante Dormido",
+        "marca": "JBL",
+        "sku": "JBL-DORM",
+        "categoria": "Audio",
+        "cantidad": 4,
+        "stockMinimo": 1,
+        "precioCompraCentavos": 4000,
+        "precioVentaCentavos": 7000,
+        "estado": True,
+        "createdAt": "2026-05-07T08:00:00",
+        "updatedAt": "2026-05-07T08:00:00",
+    }
+    admin_client.post(
+        "/sales",
+        json={
+            "productos": [{"productoId": "p1", "cantidad": 2, "precioVendidoCentavos": 1500}],
+            "totalCentavos": 3000,
+            "recibidoCentavos": 3000,
+            "metodo": "Efectivo",
+        },
+    )
+    seller_client, _repo = make_client("Vendedor", repo)
+
+    seller_response = seller_client.get("/api/v1/analytics/dashboard")
+    admin_response = admin_client.get("/api/v1/analytics/dashboard")
+
+    assert seller_response.status_code == 403
+    assert admin_response.status_code == 200
+    payload = admin_response.json()
+    assert payload["margenes"]["ingresosCentavos"] == 3000
+    assert payload["margenes"]["utilidadNetaCentavos"] == 1000
+    assert payload["pareto"]["items"][0]["paretoClass"] == "A"
+    assert payload["tendencias"]["mesesFuertesAudifonos"][0]["cantidad"] == 2
+    assert payload["inventario"]["reorderAlerts"]
+    assert any(item["productoId"] == "p3" for item in payload["inventario"]["deadStock"])
+
+
 def test_sales_history_hides_financials_for_seller() -> None:
     client, _repo = make_client("Vendedor")
     client.post(
@@ -789,8 +1094,9 @@ def test_admin_void_sale_restores_stock_and_hides_from_history() -> None:
     assert void_response.status_code == 200
     assert void_response.json()["estado"] is False
     assert repo.products["p1"]["cantidad"] == 5
-    assert repo.audit_logs[-1]["action"] == "SALE_VOID"
-    assert repo.audit_logs[-1]["adminUid"] == "test-user"
+    assert repo.audit_logs[-1]["action"] == "DELETE"
+    assert repo.audit_logs[-1]["entity"] == "ventas"
+    assert repo.audit_logs[-1]["userId"] == "test-user"
     assert history_response.json()["cantidadVentas"] == 0
 
 

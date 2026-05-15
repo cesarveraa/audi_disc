@@ -88,6 +88,20 @@ def normalize_inventory_log_doc(log_id: str, data: dict) -> dict:
     }
 
 
+def normalize_audit_log_doc(log_id: str, data: dict) -> dict:
+    return {
+        "id": log_id,
+        "userId": data.get("userId") or data.get("adminUid") or "",
+        "userEmail": data.get("userEmail") or data.get("adminEmail"),
+        "action": data.get("action", "UPDATE"),
+        "entity": data.get("entity") or ("ventas" if data.get("saleId") else ""),
+        "entityId": data.get("entityId") or data.get("saleId"),
+        "previous_data": data.get("previous_data") or {},
+        "new_data": data.get("new_data") or {},
+        "timestamp": datetime_to_iso(data.get("timestamp") or data.get("createdAt")),
+    }
+
+
 def strip_sale_financials(sale: dict, include_financials: bool) -> dict:
     if include_financials:
         return sale

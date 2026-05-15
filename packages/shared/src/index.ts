@@ -1,3 +1,5 @@
+export * from './domain/entities/Analytics';
+export * from './domain/entities/Audit';
 export * from './domain/entities/Dashboard';
 export * from './domain/entities/Customer';
 export * from './domain/entities/InventoryLog';

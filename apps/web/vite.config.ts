@@ -31,8 +31,8 @@ export default defineConfig({
       output: {
         manualChunks: {
           firebase: ['firebase/app', 'firebase/auth'],
-          vendor: ['react', 'react-dom'],
           icons: ['lucide-react'],
+          charts: ['recharts'],
         },
       },
     },

@@ -1,6 +1,8 @@
 import hashlib
 import logging
-from datetime import datetime, timedelta
+import math
+from collections import defaultdict
+from datetime import date, datetime, timedelta
 from zoneinfo import ZoneInfo
 
 from fastapi import HTTPException, status
@@ -11,6 +13,7 @@ from app.core.config import get_settings
 from app.core.firebase import get_firestore_client
 from app.core.security import AuthenticatedUser
 from app.domain.mappers import (
+    normalize_audit_log_doc,
     normalize_customer_doc,
     normalize_inventory_log_doc,
     normalize_product_doc,
@@ -28,6 +31,12 @@ from app.domain.schemas import (
 
 
 logger = logging.getLogger("audidisc.audit")
+
+AUDIT_PRICE_FIELDS = {"precioCompraCentavos", "precioVentaCentavos"}
+AUDIT_SYSTEM_FIELDS = {"createdAt", "updatedAt", "createdBy", "updatedBy"}
+ANALYTICS_LOOKBACK_DAYS = 90
+DEFAULT_LEAD_TIME_DAYS = 7
+DEAD_STOCK_DAYS = 122
 
 
 def _normalize_query(value: str | None) -> str:
@@ -72,6 +81,38 @@ def _month_label(month: int) -> str:
     return labels[month - 1]
 
 
+def _local_now() -> datetime:
+    return datetime.now(ZoneInfo(get_settings().timezone))
+
+
+def _parse_sale_date(value: object) -> date | None:
+    try:
+        return datetime.fromisoformat(str(value)[:10]).date()
+    except ValueError:
+        return None
+
+
+def _diff_changed_fields(before: dict, after: dict, candidate_fields: set[str] | None = None) -> tuple[dict, dict]:
+    fields = candidate_fields or (set(before.keys()) | set(after.keys()))
+    previous_data: dict = {}
+    new_data: dict = {}
+    for field in fields:
+        if field in AUDIT_SYSTEM_FIELDS:
+            continue
+        if before.get(field) != after.get(field):
+            previous_data[field] = before.get(field)
+            new_data[field] = after.get(field)
+    return previous_data, new_data
+
+
+def _product_audit_action(previous_data: dict) -> str:
+    if AUDIT_PRICE_FIELDS & set(previous_data):
+        return "PRICE_CHANGE"
+    if "cantidad" in previous_data:
+        return "STOCK_ADJUST"
+    return "UPDATE"
+
+
 class FirestoreInventoryRepository:
     def __init__(self) -> None:
         self.db = get_firestore_client()
@@ -81,7 +122,7 @@ class FirestoreInventoryRepository:
         self.inventory_logs = self.db.collection("inventarioLogs")
         self.push_tokens = self.db.collection("pushTokens")
         self.notifications = self.db.collection("notifications")
-        self.audit_logs = self.db.collection("auditLogs")
+        self.audit_logs = self.db.collection("audit_logs")
 
     def list_products(self, estado: bool | None, query: str | None, include_financials: bool) -> list[dict]:
         ref = self.products
@@ -169,6 +210,70 @@ class FirestoreInventoryRepository:
         except Exception:
             return sum(1 for _snapshot in query.stream())
 
+    def _audit_doc(
+        self,
+        *,
+        user: AuthenticatedUser,
+        action: str,
+        entity: str,
+        entity_id: str,
+        previous_data: dict,
+        new_data: dict,
+    ) -> dict:
+        now_local = _local_now()
+        return {
+            "userId": user.uid,
+            "userEmail": user.email,
+            "action": action,
+            "entity": entity,
+            "entityId": entity_id,
+            "previous_data": previous_data,
+            "new_data": new_data,
+            "timestamp": firestore.SERVER_TIMESTAMP,
+            "timestampLocal": now_local.isoformat(),
+            "fechaLocal": now_local.date().isoformat(),
+            "horaLocal": now_local.time().replace(microsecond=0).isoformat(),
+        }
+
+    def _write_audit_log(
+        self,
+        *,
+        user: AuthenticatedUser,
+        action: str,
+        entity: str,
+        entity_id: str,
+        previous_data: dict,
+        new_data: dict,
+    ) -> None:
+        if not previous_data and not new_data:
+            return
+        self.audit_logs.document().set(
+            self._audit_doc(
+                user=user,
+                action=action,
+                entity=entity,
+                entity_id=entity_id,
+                previous_data=previous_data,
+                new_data=new_data,
+            )
+        )
+
+    def list_audit_logs(self, page: int, limit: int) -> dict:
+        page = max(page, 1)
+        limit = max(min(limit, 100), 1)
+        offset = (page - 1) * limit
+        query = self.audit_logs.order_by("timestamp", direction=firestore.Query.DESCENDING)
+        total_count = self._count_query(self.audit_logs)
+        items = [
+            normalize_audit_log_doc(snapshot.id, snapshot.to_dict() or {})
+            for snapshot in query.offset(offset).limit(limit).stream()
+        ]
+        return {
+            "items": items,
+            "total_count": total_count,
+            "has_more": offset + len(items) < total_count,
+        }
+
     def create_product(self, payload: ProductCreate, user: AuthenticatedUser, include_financials: bool) -> dict:
         now = firestore.SERVER_TIMESTAMP
         doc_ref = self.products.document()
@@ -208,8 +313,21 @@ class FirestoreInventoryRepository:
                 detail="precioVentaCentavos must be greater than or equal to precioCompraCentavos",
             )
 
+        previous_data, new_data = _diff_changed_fields(
+            current,
+            {**current, **update_data},
+            set(update_data.keys()),
+        )
         update_data.update({"updatedAt": firestore.SERVER_TIMESTAMP, "updatedBy": user.uid})
         doc_ref.update(update_data)
+        self._write_audit_log(
+            user=user,
+            action=_product_audit_action(previous_data),
+            entity="productos",
+            entity_id=product_id,
+            previous_data=previous_data,
+            new_data=new_data,
+        )
         updated = doc_ref.get()
         return normalize_product_doc(product_id, updated.to_dict() or {}, include_financials)
 
@@ -251,6 +369,20 @@ class FirestoreInventoryRepository:
                 "createdBy": user.uid,
                 "createdAt": firestore.SERVER_TIMESTAMP,
             }
+            audit_ref = self.audit_logs.document()
+            audit_doc = self._audit_doc(
+                user=user,
+                action="STOCK_ADJUST",
+                entity="productos",
+                entity_id=payload.productoId,
+                previous_data={"cantidad": current_quantity},
+                new_data={
+                    "cantidad": next_quantity,
+                    "cantidadDelta": payload.cantidadDelta,
+                    "motivo": payload.motivo,
+                    "referencia": payload.referencia,
+                },
+            )
             tx.update(
                 product_ref,
                 {
@@ -260,6 +392,7 @@ class FirestoreInventoryRepository:
                 },
             )
             tx.set(log_ref, log_doc)
+            tx.set(audit_ref, audit_doc)
             product["cantidad"] = next_quantity
             product["updatedBy"] = user.uid
             log_doc["createdAt"] = datetime.now(ZoneInfo(get_settings().timezone)).isoformat()
@@ -275,12 +408,21 @@ class FirestoreInventoryRepository:
         snapshot = doc_ref.get()
         if not snapshot.exists:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Product not found")
+        current = snapshot.to_dict() or {}
         doc_ref.update(
             {
                 "estado": False,
                 "updatedAt": firestore.SERVER_TIMESTAMP,
                 "updatedBy": user.uid,
             }
+        )
+        self._write_audit_log(
+            user=user,
+            action="DELETE",
+            entity="productos",
+            entity_id=product_id,
+            previous_data={"estado": bool(current.get("estado", True))},
+            new_data={"estado": False},
         )
         updated = doc_ref.get()
         return normalize_product_doc(product_id, updated.to_dict() or {}, True)
@@ -603,16 +745,20 @@ class FirestoreInventoryRepository:
             )
             tx.set(
                 self.audit_logs.document(),
-                {
-                    "action": "SALE_VOID",
-                    "saleId": sale_id,
-                    "adminUid": user.uid,
-                    "adminEmail": user.email,
-                    "fechaLocal": now_local.date().isoformat(),
-                    "horaLocal": now_local.time().replace(microsecond=0).isoformat(),
-                    "restoredItems": restored_items,
-                    "createdAt": firestore.SERVER_TIMESTAMP,
-                },
+                self._audit_doc(
+                    user=user,
+                    action="DELETE",
+                    entity="ventas",
+                    entity_id=sale_id,
+                    previous_data={
+                        "estado": True,
+                        "productos": restored_items,
+                    },
+                    new_data={
+                        "estado": False,
+                        "voidedBy": user.uid,
+                    },
+                ),
             )
             tx.update(
                 sale_ref,
@@ -775,6 +921,193 @@ class FirestoreInventoryRepository:
             "comparativaInteranual": comparison,
             "topProductos": top_products,
             "topClientes": top_customers,
+        }
+
+    def analytics_dashboard(self) -> dict:
+        sales = self._all_active_sales()
+        today = _local_now().date()
+        lookback_start = today - timedelta(days=ANALYTICS_LOOKBACK_DAYS)
+        dead_stock_cutoff = today - timedelta(days=DEAD_STOCK_DAYS)
+        products = {
+            snapshot.id: (snapshot.to_dict() or {})
+            for snapshot in self.products.where("estado", "==", True).stream()
+        }
+
+        total_revenue = 0
+        total_cost = 0
+        total_profit = 0
+        product_metrics: dict[str, dict] = {}
+        monthly_metrics: dict[str, dict] = {}
+        demand_by_product: defaultdict[str, int] = defaultdict(int)
+        last_sale_by_product: dict[str, date] = {}
+
+        for _sale_id, sale in sales:
+            sale_date = _parse_sale_date(sale.get("fechaLocal"))
+            month_key = str(sale.get("fechaLocal", ""))[:7] if sale_date else "sin-fecha"
+            month_number = sale_date.month if sale_date else 0
+            month = monthly_metrics.setdefault(
+                month_key,
+                {
+                    "mes": month_key,
+                    "label": _month_label(month_number) if month_number else "Sin fecha",
+                    "totalCentavos": 0,
+                    "utilidadCentavos": 0,
+                    "cantidadVentas": 0,
+                    "audifonosCantidad": 0,
+                    "audifonosCentavos": 0,
+                },
+            )
+            month["cantidadVentas"] += 1
+
+            for item in sale.get("productos", []):
+                quantity = int(item.get("cantidad", 0))
+                if quantity <= 0:
+                    continue
+                product_id = str(item.get("productoId") or item.get("nombre") or "sin-producto")
+                sold_unit = int(item.get("precioVendidoCentavos") or item.get("precioVentaCentavos") or 0)
+                revenue = int(item.get("subtotalCentavos") or (sold_unit * quantity))
+                cost_unit = int(item.get("precioCompraCentavos") or 0)
+                cost = cost_unit * quantity
+                profit = int(item.get("utilidadCentavos", revenue - cost))
+                product_name = item.get("nombre") or products.get(product_id, {}).get("nombre") or "Sin nombre"
+                category = item.get("categoria") or products.get(product_id, {}).get("categoria") or "Sin categoria"
+
+                total_revenue += revenue
+                total_cost += cost
+                total_profit += profit
+                month["totalCentavos"] += revenue
+                month["utilidadCentavos"] += profit
+
+                normalized_text = f"{product_name} {category}".casefold()
+                if "audif" in normalized_text or "auricular" in normalized_text or "headphone" in normalized_text:
+                    month["audifonosCantidad"] += quantity
+                    month["audifonosCentavos"] += revenue
+
+                metric = product_metrics.setdefault(
+                    product_id,
+                    {
+                        "productoId": product_id,
+                        "nombre": product_name,
+                        "marca": item.get("marca") or products.get(product_id, {}).get("marca"),
+                        "categoria": category,
+                        "cantidadVendida": 0,
+                        "totalCentavos": 0,
+                        "utilidadCentavos": 0,
+                    },
+                )
+                metric["cantidadVendida"] += quantity
+                metric["totalCentavos"] += revenue
+                metric["utilidadCentavos"] += profit
+
+                if sale_date:
+                    if sale_date >= lookback_start:
+                        demand_by_product[product_id] += quantity
+                    previous_last_sale = last_sale_by_product.get(product_id)
+                    if previous_last_sale is None or sale_date > previous_last_sale:
+                        last_sale_by_product[product_id] = sale_date
+
+        sorted_products = sorted(product_metrics.values(), key=lambda item: item["totalCentavos"], reverse=True)
+        top_twenty_count = max(1, math.ceil(len(sorted_products) * 0.2)) if sorted_products else 0
+        top_twenty_revenue = sum(item["totalCentavos"] for item in sorted_products[:top_twenty_count])
+        cumulative = 0
+        pareto_items = []
+        for index, item in enumerate(sorted_products):
+            previous_cumulative_percent = round((cumulative / total_revenue) * 100, 2) if total_revenue else 0.0
+            cumulative += item["totalCentavos"]
+            cumulative_percent = round((cumulative / total_revenue) * 100, 2) if total_revenue else 0.0
+            pareto_items.append(
+                {
+                    **item,
+                    "revenueSharePorcentaje": round((item["totalCentavos"] / total_revenue) * 100, 2)
+                    if total_revenue
+                    else 0.0,
+                    "cumulativeSharePorcentaje": cumulative_percent,
+                    "isTopTwenty": index < top_twenty_count,
+                    "paretoClass": "A" if previous_cumulative_percent < 80 else "B" if cumulative_percent <= 95 else "C",
+                }
+            )
+
+        reorder_alerts = []
+        dead_stock = []
+        for product_id, product in products.items():
+            current_stock = int(product.get("cantidad", 0))
+            safety_stock = int(product.get("stockMinimo", 0))
+            avg_daily_demand = demand_by_product[product_id] / ANALYTICS_LOOKBACK_DAYS
+            reorder_point = math.ceil((avg_daily_demand * DEFAULT_LEAD_TIME_DAYS) + safety_stock)
+            if current_stock <= reorder_point:
+                reorder_alerts.append(
+                    {
+                        "productoId": product_id,
+                        "nombre": product.get("nombre", ""),
+                        "marca": product.get("marca"),
+                        "categoria": product.get("categoria"),
+                        "stockActual": current_stock,
+                        "demandaMediaDiaria": round(avg_daily_demand, 2),
+                        "tiempoEntregaDias": DEFAULT_LEAD_TIME_DAYS,
+                        "stockSeguridad": safety_stock,
+                        "reorderPoint": reorder_point,
+                        "sugerenciaCompra": max(reorder_point - current_stock, 0),
+                    }
+                )
+
+            last_sale_date = last_sale_by_product.get(product_id)
+            if current_stock > 0 and (last_sale_date is None or last_sale_date < dead_stock_cutoff):
+                dead_stock.append(
+                    {
+                        "productoId": product_id,
+                        "nombre": product.get("nombre", ""),
+                        "marca": product.get("marca"),
+                        "categoria": product.get("categoria"),
+                        "stockActual": current_stock,
+                        "ultimaVentaFecha": last_sale_date.isoformat() if last_sale_date else None,
+                        "diasSinVenta": (today - last_sale_date).days if last_sale_date else None,
+                        "valorInventarioCentavos": current_stock * int(product.get("precioVentaCentavos", 0)),
+                    }
+                )
+
+        monthly_trends = sorted(monthly_metrics.values(), key=lambda item: item["mes"])
+        headphone_months = sorted(
+            [
+                {
+                    "mes": item["mes"],
+                    "label": item["label"],
+                    "cantidad": item["audifonosCantidad"],
+                    "totalCentavos": item["audifonosCentavos"],
+                }
+                for item in monthly_trends
+                if item["audifonosCantidad"] > 0
+            ],
+            key=lambda item: item["cantidad"],
+            reverse=True,
+        )[:6]
+
+        return {
+            "generatedAt": _local_now().isoformat(),
+            "pareto": {
+                "totalProductos": len(sorted_products),
+                "topTwentyCount": top_twenty_count,
+                "topTwentyRevenueSharePorcentaje": round((top_twenty_revenue / total_revenue) * 100, 2)
+                if total_revenue
+                else 0.0,
+                "items": pareto_items[:20],
+            },
+            "tendencias": {
+                "ventasPorMes": monthly_trends,
+                "mesesFuertesAudifonos": headphone_months,
+            },
+            "margenes": {
+                "ingresosCentavos": total_revenue,
+                "costoCentavos": total_cost,
+                "utilidadNetaCentavos": total_profit,
+                "margenPorcentaje": _margin_percent(total_profit, total_revenue),
+                "ventasAnalizadas": len(sales),
+            },
+            "inventario": {
+                "leadTimeDias": DEFAULT_LEAD_TIME_DAYS,
+                "lookbackDiasDemanda": ANALYTICS_LOOKBACK_DAYS,
+                "reorderAlerts": sorted(reorder_alerts, key=lambda item: item["reorderPoint"] - item["stockActual"], reverse=True)[:20],
+                "deadStock": sorted(dead_stock, key=lambda item: item["valorInventarioCentavos"], reverse=True)[:20],
+            },
         }
 
     def reports_dashboard(self, include_financials: bool) -> dict:

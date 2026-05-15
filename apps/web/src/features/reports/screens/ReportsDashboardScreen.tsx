@@ -10,6 +10,7 @@ import {
   LayoutDashboard,
   LogOut,
   ReceiptText,
+  ShieldCheck,
   TrendingUp,
   Trophy,
   UsersRound,
@@ -127,6 +128,14 @@ export default function ReportsDashboardScreen() {
             <a className="flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold text-gray-600 transition hover:bg-white/70" href="/historial">
               <ReceiptText className="h-4 w-4" />
               Ventas Pasadas
+            </a>
+            <a className="flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold text-gray-600 transition hover:bg-white/70" href="/bi">
+              <TrendingUp className="h-4 w-4" />
+              Graficos Avanzados
+            </a>
+            <a className="flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold text-gray-600 transition hover:bg-white/70" href="/auditoria">
+              <ShieldCheck className="h-4 w-4" />
+              Auditoria
             </a>
             <button
               className="flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold text-gray-600 transition hover:bg-white/70"

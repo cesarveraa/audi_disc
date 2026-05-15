@@ -77,7 +77,7 @@ export function productDescription(product: CatalogProduct) {
   const parts = [
     product.nombre,
     product.marca ? `marca ${product.marca}` : null,
-    product.categoria ? `categoría ${product.categoria}` : null,
+    product.categoria ? `categoria ${product.categoria}` : null,
   ].filter(Boolean);
-  return `${parts.join(', ')} disponible para consulta local en Audi Disc ${business.city}, ${business.region}. Pregunta por WhatsApp por disponibilidad, garantía y entrega inmediata.`;
+  return `${parts.join(', ')} disponible para consulta local en Audi Disc ${business.city}, ${business.region}. Pregunta por WhatsApp por disponibilidad, garantia y entrega inmediata.`;
 }

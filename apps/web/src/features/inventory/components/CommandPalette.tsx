@@ -89,6 +89,20 @@ export function CommandPalette({ isAdmin = false, onQueryChange, onNewProduct }:
           run: () => navigateTo('/historial'),
         },
         {
+          id: 'analytics',
+          label: 'Graficos Avanzados',
+          hint: 'Pareto, margen y ROP',
+          icon: 'nav',
+          run: () => navigateTo('/bi'),
+        },
+        {
+          id: 'audit',
+          label: 'Historial de Auditoria',
+          hint: 'Cambios sensibles',
+          icon: 'nav',
+          run: () => navigateTo('/auditoria'),
+        },
+        {
           id: 'new-product',
           label: 'Nuevo producto',
           hint: 'CTA administrador',

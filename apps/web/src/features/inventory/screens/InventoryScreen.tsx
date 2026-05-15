@@ -8,9 +8,12 @@ import {
   LogOut,
   Plus,
   RefreshCw,
+  ScanBarcode,
+  ShieldCheck,
   Sparkles,
   SlidersHorizontal,
   SquarePen,
+  TrendingUp,
   UserRound,
 } from 'lucide-react';
 import type { InventoryUpdateInput, Product, ProductCreateInput, ProductUpdateInput } from '@audidisc/shared';
@@ -18,6 +21,8 @@ import { formatBsFromCentavos, hasAdminFinancials } from '@audidisc/shared';
 
 import { useRequiredAuth } from '@app/providers/AuthProvider';
 import { AppButton } from '@core/ui/AppButton';
+import { MobilePullToRefresh } from '@core/ui/MobilePullToRefresh';
+import { findProductByBarcode, scanBarcodeValue } from '@features/barcode/barcodeScanner';
 import { CommandPalette } from '@features/inventory/components/CommandPalette';
 import { DashboardSummary } from '@features/inventory/components/DashboardSummary';
 import { ProductFormModal } from '@features/inventory/components/ProductFormModal';
@@ -53,9 +58,11 @@ export default function InventoryScreen() {
   const [isProductModalOpen, setProductModalOpen] = useState(false);
   const [stockProduct, setStockProduct] = useState<Product | null>(null);
   const [isSaving, setSaving] = useState(false);
+  const [isScanning, setScanning] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const {
     dashboard,
+    products,
     filteredProducts,
     query,
     setQuery,
@@ -116,6 +123,31 @@ export default function InventoryScreen() {
     }
   }
 
+  async function handleBarcodeScan() {
+    setScanning(true);
+    setActionError(null);
+    try {
+      const code = await scanBarcodeValue();
+      const product = findProductByBarcode(products, code);
+      if (!product) {
+        setQuery(code);
+        setActionError(`No encontre un producto con el codigo ${code}. Revise SKU o busqueda.`);
+        return;
+      }
+      setQuery(product.sku ?? product.nombre);
+      if (isAdmin) {
+        setEditingProduct(product);
+        setProductModalOpen(true);
+      } else {
+        setActionError(`Producto encontrado: ${product.nombre}. Solo Administrador puede abrir la ficha de edicion.`);
+      }
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : 'No se pudo escanear el codigo');
+    } finally {
+      setScanning(false);
+    }
+  }
+
   const categories = useMemo(() => {
     const values = new Set<string>();
     filteredProducts.forEach(product => {
@@ -165,6 +197,7 @@ export default function InventoryScreen() {
 
   return (
     <main className="min-h-screen bg-[radial-gradient(circle_at_top_left,rgba(228,0,43,0.08),transparent_34%),linear-gradient(180deg,#ffffff_0%,#f7f8fa_46%,#eef0f4_100%)] text-gray-950">
+      <MobilePullToRefresh disabled={isLoading || isSaving} onRefresh={refresh} />
       <div className="mx-auto grid min-h-screen max-w-[1680px] grid-cols-1 gap-0 lg:grid-cols-[292px_minmax(0,1fr)]">
         <aside className="z-20 border-b border-white/60 bg-white/55 px-4 py-4 shadow-sm backdrop-blur-2xl lg:sticky lg:top-0 lg:h-screen lg:border-b-0 lg:border-r lg:px-5 lg:py-6">
           <div className="flex items-center justify-between gap-3 rounded-panel border border-white/70 bg-white/55 p-3 shadow-sm backdrop-blur-xl">
@@ -206,13 +239,29 @@ export default function InventoryScreen() {
               Ventas
             </a>
             {isAdmin && (
-              <a
-                className="flex min-w-max items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold text-gray-600 transition hover:bg-white/70 hover:text-gray-950 active:scale-[0.99]"
-                href="/reportes"
-              >
-                <BarChart3 className="h-4 w-4" />
-                Reportes
-              </a>
+              <>
+                <a
+                  className="flex min-w-max items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold text-gray-600 transition hover:bg-white/70 hover:text-gray-950 active:scale-[0.99]"
+                  href="/reportes"
+                >
+                  <BarChart3 className="h-4 w-4" />
+                  Reportes
+                </a>
+                <a
+                  className="flex min-w-max items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold text-gray-600 transition hover:bg-white/70 hover:text-gray-950 active:scale-[0.99]"
+                  href="/bi"
+                >
+                  <TrendingUp className="h-4 w-4" />
+                  BI
+                </a>
+                <a
+                  className="flex min-w-max items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold text-gray-600 transition hover:bg-white/70 hover:text-gray-950 active:scale-[0.99]"
+                  href="/auditoria"
+                >
+                  <ShieldCheck className="h-4 w-4" />
+                  Auditoria
+                </a>
+              </>
             )}
             <a
               className="flex min-w-max items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold text-gray-600 transition hover:bg-white/70 hover:text-gray-950 active:scale-[0.99]"
@@ -256,6 +305,14 @@ export default function InventoryScreen() {
             </div>
             <div className="flex flex-wrap items-center gap-3">
               <CommandPalette isAdmin={isAdmin} onQueryChange={setQuery} onNewProduct={handleNewProduct} />
+              <AppButton
+                variant="neutral"
+                icon={<ScanBarcode className="h-4 w-4" />}
+                isLoading={isScanning}
+                onClick={() => void handleBarcodeScan()}
+              >
+                Escanear con Camara
+              </AppButton>
               <AppButton
                 variant="neutral"
                 onClick={() => void refresh()}
@@ -336,6 +393,11 @@ export default function InventoryScreen() {
             {error && (
               <div className="mb-4 rounded-2xl bg-audi-red px-4 py-3 text-sm font-semibold text-white">
                 {error}
+              </div>
+            )}
+            {actionError && !isProductModalOpen && !stockProduct && (
+              <div className="mb-4 rounded-2xl bg-audi-red px-4 py-3 text-sm font-semibold text-white">
+                {actionError}
               </div>
             )}
             {isLoading && (
