@@ -1,9 +1,10 @@
 import hashlib
 import logging
 import math
+import time
 from collections import defaultdict
 from queue import Empty, Queue
-from threading import Thread
+from threading import Lock, Thread
 from datetime import date, datetime, timedelta
 from urllib.parse import quote
 from zoneinfo import ZoneInfo
@@ -51,6 +52,13 @@ SALES_TODAY_LIMIT = 600
 SALES_RANGE_LIMIT = 1_500
 ACTIVE_SALES_LIMIT = 3_000
 FIRESTORE_REST_TIMEOUT_SECONDS = 5.0
+COLLECTION_CACHE_TTL_SECONDS = 180.0
+COLLECTION_CACHE_STALE_SECONDS = 3_600.0
+COLLECTION_QUOTA_BACKOFF_SECONDS = 300.0
+COLLECTION_ERROR_BACKOFF_SECONDS = 30.0
+_rest_collection_cache: dict[str, tuple[float, float, list[tuple[str, dict]]]] = {}
+_rest_collection_backoff_until: dict[str, float] = {}
+_rest_collection_locks: defaultdict[str, Lock] = defaultdict(Lock)
 
 
 def _normalize_query(value: str | None) -> str:
@@ -126,8 +134,49 @@ def _decode_rest_document(document: dict) -> tuple[str, dict]:
     return document_id, fields
 
 
+def _clone_rest_documents(documents: list[tuple[str, dict]]) -> list[tuple[str, dict]]:
+    return [(document_id, dict(data)) for document_id, data in documents]
+
+
+def _cached_rest_documents(cache_key: str, *, allow_stale: bool) -> list[tuple[str, dict]] | None:
+    cached = _rest_collection_cache.get(cache_key)
+    if not cached:
+        return None
+    expires_at, stale_until, documents = cached
+    now = time.monotonic()
+    if expires_at > now or (allow_stale and stale_until > now):
+        return _clone_rest_documents(documents)
+    return None
+
+
 def _rest_collection_documents(collection: str, *, page_size: int, context: str) -> list[tuple[str, dict]]:
+    cache_key = f"{collection}:{page_size}"
+    cached = _cached_rest_documents(cache_key, allow_stale=False)
+    if cached is not None:
+        return cached
+
+    now = time.monotonic()
+    backoff_until = _rest_collection_backoff_until.get(collection, 0)
+    if backoff_until > now:
+        stale = _cached_rest_documents(cache_key, allow_stale=True)
+        if stale is not None:
+            logger.warning("%s REST read served from stale cache during Firestore backoff", context)
+            return stale
+        logger.warning("%s REST read skipped during Firestore backoff", context)
+        return []
+
+    lock = _rest_collection_locks[cache_key]
+    if not lock.acquire(blocking=False):
+        stale = _cached_rest_documents(cache_key, allow_stale=True)
+        if stale is not None:
+            return stale
+        logger.warning("%s REST read skipped because another request is refreshing cache", context)
+        return []
+
     try:
+        cached = _cached_rest_documents(cache_key, allow_stale=False)
+        if cached is not None:
+            return cached
         session, project_id = get_firestore_rest_session()
         encoded_collection = quote(collection, safe="/")
         url = (
@@ -147,10 +196,29 @@ def _rest_collection_documents(collection: str, *, page_size: int, context: str)
             page_token = payload.get("nextPageToken")
             if not page_token:
                 break
-        return documents[:page_size]
+        documents = documents[:page_size]
+        now = time.monotonic()
+        _rest_collection_cache[cache_key] = (
+            now + COLLECTION_CACHE_TTL_SECONDS,
+            now + COLLECTION_CACHE_STALE_SECONDS,
+            _clone_rest_documents(documents),
+        )
+        _rest_collection_backoff_until.pop(collection, None)
+        return _clone_rest_documents(documents)
     except Exception as exc:
+        status_code = getattr(getattr(exc, "response", None), "status_code", None)
+        if status_code == 429:
+            _rest_collection_backoff_until[collection] = time.monotonic() + COLLECTION_QUOTA_BACKOFF_SECONDS
+        else:
+            _rest_collection_backoff_until[collection] = time.monotonic() + COLLECTION_ERROR_BACKOFF_SECONDS
+        stale = _cached_rest_documents(cache_key, allow_stale=True)
+        if stale is not None:
+            logger.warning("%s REST read failed; serving stale cache: %s", context, exc)
+            return stale
         logger.warning("%s REST read failed: %s", context, exc)
         return []
+    finally:
+        lock.release()
 
 
 def _sale_to_response(sale_id: str, data: dict, include_financials: bool) -> dict:

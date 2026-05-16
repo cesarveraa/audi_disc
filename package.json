@@ -19,6 +19,8 @@
     "node": ">=20"
   },
   "overrides": {
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
     "postcss": "8.5.14",
     "@react-native/codegen": "0.85.3",
     "@react-native/babel-plugin-codegen": "0.85.3",

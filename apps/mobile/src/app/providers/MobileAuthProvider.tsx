@@ -1,7 +1,7 @@
 import { createContext, ReactNode, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { onIdTokenChanged, signInWithEmailAndPassword, signOut } from '@firebase/auth';
 import type { CurrentUser, UserRole } from '@audidisc/shared';
-import { isAdminRole } from '@audidisc/shared';
+import { isAdminRole, permissionsForRole } from '@audidisc/shared';
 
 import { getMobileAuth } from '@infra/firebase/firebaseAuth';
 
@@ -83,11 +83,19 @@ export function MobileAuthProvider({ children }: { children: ReactNode }) {
           return;
         }
         const role = isRole(tokenResult.claims.role) ? tokenResult.claims.role : 'Vendedor';
+        const roleIdClaim = tokenResult.claims.roleId;
+        const rawPermissions = tokenResult.claims.permissions;
+        const permissions = permissionsForRole(
+          role,
+          Array.isArray(rawPermissions) ? rawPermissions.map(String) : null,
+        );
         setUser({
           uid: currentUser.uid,
           email: currentUser.email,
           displayName: currentUser.displayName,
           role,
+          roleId: typeof roleIdClaim === 'string' ? roleIdClaim : role,
+          permissions,
         });
         setIdToken(token);
         sessionTimer = setTimeout(() => {

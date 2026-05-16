@@ -131,9 +131,15 @@ export default function POSScreen() {
     };
   }, [idToken, user.role]);
 
+  const debouncedCustomerQuery = useDebouncedValue(customerQuery, 350);
+
   useEffect(() => {
+    if (!debouncedCustomerQuery.trim()) {
+      setCustomers([]);
+      return undefined;
+    }
     let mounted = true;
-    fetchCustomers({ idToken, query: customerQuery })
+    fetchCustomers({ idToken, query: debouncedCustomerQuery })
       .then(nextCustomers => {
         if (mounted) {
           setCustomers(nextCustomers.slice(0, 6));
@@ -147,7 +153,7 @@ export default function POSScreen() {
     return () => {
       mounted = false;
     };
-  }, [customerQuery, idToken]);
+  }, [debouncedCustomerQuery, idToken]);
 
   const debouncedQuery = useDebouncedValue(query, 180);
   const filteredProducts = useMemo(
@@ -201,6 +207,14 @@ export default function POSScreen() {
   }
 
   async function handleBarcodeScan() {
+    if (isLoadingProducts) {
+      setError('Espera a que el inventario termine de cargar antes de escanear.');
+      return;
+    }
+    if (!products.length) {
+      setError('No hay inventario cargado para comparar el codigo. Actualiza productos e intenta de nuevo.');
+      return;
+    }
     setScanning(true);
     setError(null);
     setSuccessMessage(null);
@@ -385,7 +399,7 @@ export default function POSScreen() {
                 variant="primary"
                 icon={<ScanBarcode className="h-4 w-4" />}
                 isLoading={isScanning}
-                disabled={isLoadingProducts}
+                disabled={isLoadingProducts || !products.length}
                 onClick={() => void handleBarcodeScan()}
               >
                 Escanear con Camara

@@ -110,6 +110,14 @@ export default function InventoryScreen() {
   }
 
   async function handleBarcodeScan() {
+    if (isLoading) {
+      setActionError('Espera a que el inventario termine de cargar antes de escanear.');
+      return;
+    }
+    if (!products.length) {
+      setActionError('No hay inventario cargado para comparar el codigo. Actualiza productos e intenta de nuevo.');
+      return;
+    }
     setScanning(true);
     setActionError(null);
     try {
@@ -206,6 +214,7 @@ export default function InventoryScreen() {
                 variant="neutral"
                 icon={<ScanBarcode className="h-4 w-4" />}
                 isLoading={isScanning}
+                disabled={isLoading || !products.length}
                 onClick={() => void handleBarcodeScan()}
               >
                 Escanear con Camara

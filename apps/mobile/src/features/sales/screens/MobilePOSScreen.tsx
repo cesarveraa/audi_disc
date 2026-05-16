@@ -343,13 +343,14 @@ export default function MobilePOSScreen({ products, initialCustomer, initialProd
                 <Text style={styles.cancelText}>Cerrar</Text>
               </Pressable>
             </View>
-            <CameraView
-              style={styles.camera}
-              barcodeScannerSettings={{ barcodeTypes: [...barcodeTypes] }}
-              onBarcodeScanned={handleBarcodeScanned}
-            >
-              <View style={styles.scanFrame} />
-            </CameraView>
+            <View style={styles.cameraShell}>
+              <CameraView
+                style={styles.camera}
+                barcodeScannerSettings={{ barcodeTypes: [...barcodeTypes] }}
+                onBarcodeScanned={handleBarcodeScanned}
+              />
+              <View pointerEvents="none" style={styles.scanFrame} />
+            </View>
             <Text style={styles.scannerHint}>Apunta al SKU/codigo y se agregara al carrito si coincide.</Text>
           </View>
         </View>
@@ -783,10 +784,19 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 10,
   },
-  camera: {
+  cameraShell: {
     height: 320,
     justifyContent: 'center',
     alignItems: 'center',
+    overflow: 'hidden',
+    backgroundColor: colors.night,
+  },
+  camera: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
   },
   scanFrame: {
     width: '76%',

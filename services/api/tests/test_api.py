@@ -725,12 +725,16 @@ def test_firestore_rest_collection_reader_decodes_and_paginates(monkeypatch: pyt
             )
 
     fake_session = FakeSession()
+    firestore_repo._rest_collection_cache.clear()
+    firestore_repo._rest_collection_backoff_until.clear()
     monkeypatch.setattr(firestore_repo, "get_firestore_rest_session", lambda: (fake_session, "demo"))
 
     docs = firestore_repo._rest_collection_documents("productos", page_size=2, context="test products")
+    cached_docs = firestore_repo._rest_collection_documents("productos", page_size=2, context="test products cached")
 
     assert docs[0] == ("p1", {"nombre": "Parlante", "estado": True, "cantidad": 3, "tags": ["Audio"], "createdAt": None, "updatedAt": None})
     assert docs[1][0] == "p2"
+    assert cached_docs == docs
     assert fake_session.calls == [{"pageSize": 2}, {"pageSize": 1, "pageToken": "next"}]
 
 
