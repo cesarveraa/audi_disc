@@ -12,6 +12,7 @@ from app.core.security import AuthenticatedUser, get_current_user
 from app.domain.mappers import normalize_product_doc, strip_sale_financials
 from app.domain.schemas import InventoryUpdate, ProductCreate, ProductUpdate, SaleCreate
 from app.main import create_app
+from app.repositories import firestore_repository as firestore_repo
 
 
 class InMemoryInventoryRepository:
@@ -673,6 +674,64 @@ def test_public_catalog_products_do_not_require_auth_and_hide_sensitive_fields()
     assert "precioCompraCentavos" not in payload["items"][0]
     assert "utilidadCentavos" not in payload["items"][0]
     assert "margenPorcentaje" not in payload["items"][0]
+
+
+def test_firestore_rest_collection_reader_decodes_and_paginates(monkeypatch: pytest.MonkeyPatch) -> None:
+    class FakeResponse:
+        def __init__(self, payload: dict) -> None:
+            self._payload = payload
+
+        def raise_for_status(self) -> None:
+            return None
+
+        def json(self) -> dict:
+            return self._payload
+
+    class FakeSession:
+        def __init__(self) -> None:
+            self.calls: list[dict] = []
+
+        def get(self, _url: str, *, params: dict, timeout: float) -> FakeResponse:
+            self.calls.append(params)
+            if len(self.calls) == 1:
+                return FakeResponse(
+                    {
+                        "documents": [
+                            {
+                                "name": "projects/demo/databases/(default)/documents/productos/p1",
+                                "fields": {
+                                    "nombre": {"stringValue": "Parlante"},
+                                    "estado": {"booleanValue": True},
+                                    "cantidad": {"integerValue": "3"},
+                                    "tags": {"arrayValue": {"values": [{"stringValue": "Audio"}]}},
+                                },
+                            }
+                        ],
+                        "nextPageToken": "next",
+                    }
+                )
+            return FakeResponse(
+                {
+                    "documents": [
+                        {
+                            "name": "projects/demo/databases/(default)/documents/productos/p2",
+                            "fields": {
+                                "nombre": {"stringValue": "Cable"},
+                                "estado": {"booleanValue": False},
+                            },
+                        }
+                    ]
+                }
+            )
+
+    fake_session = FakeSession()
+    monkeypatch.setattr(firestore_repo, "get_firestore_rest_session", lambda: (fake_session, "demo"))
+
+    docs = firestore_repo._rest_collection_documents("productos", page_size=2, context="test products")
+
+    assert docs[0] == ("p1", {"nombre": "Parlante", "estado": True, "cantidad": 3, "tags": ["Audio"], "createdAt": None, "updatedAt": None})
+    assert docs[1][0] == "p2"
+    assert fake_session.calls == [{"pageSize": 2}, {"pageSize": 1, "pageToken": "next"}]
 
 
 def test_public_catalog_products_paginate() -> None:

@@ -5,6 +5,7 @@ from collections import defaultdict
 from queue import Empty, Queue
 from threading import Thread
 from datetime import date, datetime, timedelta
+from urllib.parse import quote
 from zoneinfo import ZoneInfo
 
 from fastapi import HTTPException, status
@@ -13,7 +14,7 @@ from google.cloud import firestore
 from google.cloud.firestore_v1.base_query import FieldFilter
 
 from app.core.config import get_settings
-from app.core.firebase import get_firestore_client
+from app.core.firebase import get_firestore_client, get_firestore_rest_session
 from app.core.security import AuthenticatedUser
 from app.domain.mappers import (
     normalize_audit_log_doc,
@@ -49,6 +50,7 @@ CUSTOMER_SALES_LIMIT = 250
 SALES_TODAY_LIMIT = 600
 SALES_RANGE_LIMIT = 1_500
 ACTIVE_SALES_LIMIT = 3_000
+FIRESTORE_REST_TIMEOUT_SECONDS = 5.0
 
 
 def _normalize_query(value: str | None) -> str:
@@ -81,6 +83,74 @@ def _safe_stream(query, *, limit: int | None = None, context: str = "firestore")
         logger.warning("%s query failed or timed out: %s", context, payload)
         return []
     return list(payload)
+
+
+def _decode_rest_value(value: dict) -> object:
+    if "nullValue" in value:
+        return None
+    if "booleanValue" in value:
+        return bool(value["booleanValue"])
+    if "integerValue" in value:
+        return int(value["integerValue"])
+    if "doubleValue" in value:
+        return float(value["doubleValue"])
+    if "timestampValue" in value:
+        return value["timestampValue"]
+    if "stringValue" in value:
+        return str(value["stringValue"])
+    if "bytesValue" in value:
+        return value["bytesValue"]
+    if "referenceValue" in value:
+        return value["referenceValue"]
+    if "geoPointValue" in value:
+        return value["geoPointValue"]
+    if "arrayValue" in value:
+        return [_decode_rest_value(item) for item in value["arrayValue"].get("values", [])]
+    if "mapValue" in value:
+        return {
+            key: _decode_rest_value(item)
+            for key, item in value["mapValue"].get("fields", {}).items()
+        }
+    return None
+
+
+def _decode_rest_document(document: dict) -> tuple[str, dict]:
+    name = str(document.get("name") or "")
+    document_id = name.rsplit("/", 1)[-1]
+    fields = {
+        key: _decode_rest_value(value)
+        for key, value in (document.get("fields") or {}).items()
+    }
+    fields.setdefault("createdAt", document.get("createTime"))
+    fields.setdefault("updatedAt", document.get("updateTime"))
+    return document_id, fields
+
+
+def _rest_collection_documents(collection: str, *, page_size: int, context: str) -> list[tuple[str, dict]]:
+    try:
+        session, project_id = get_firestore_rest_session()
+        encoded_collection = quote(collection, safe="/")
+        url = (
+            f"https://firestore.googleapis.com/v1/projects/{project_id}"
+            f"/databases/(default)/documents/{encoded_collection}"
+        )
+        documents: list[tuple[str, dict]] = []
+        page_token: str | None = None
+        while len(documents) < page_size:
+            params = {"pageSize": min(300, page_size - len(documents))}
+            if page_token:
+                params["pageToken"] = page_token
+            response = session.get(url, params=params, timeout=FIRESTORE_REST_TIMEOUT_SECONDS)
+            response.raise_for_status()
+            payload = response.json()
+            documents.extend(_decode_rest_document(document) for document in payload.get("documents", []))
+            page_token = payload.get("nextPageToken")
+            if not page_token:
+                break
+        return documents[:page_size]
+    except Exception as exc:
+        logger.warning("%s REST read failed: %s", context, exc)
+        return []
 
 
 def _sale_to_response(sale_id: str, data: dict, include_financials: bool) -> dict:
@@ -165,14 +235,11 @@ class FirestoreInventoryRepository:
         self.audit_logs = self.db.collection("audit_logs")
 
     def list_products(self, estado: bool | None, query: str | None, include_financials: bool) -> list[dict]:
-        ref = self.products
-        if estado is not None:
-            ref = _where(ref, "estado", "==", estado)
-
         normalized_query = _normalize_query(query)
         products = []
-        for snapshot in _safe_stream(ref, limit=PRODUCT_LIST_LIMIT, context="products list"):
-            data = snapshot.to_dict() or {}
+        for product_id, data in _rest_collection_documents("productos", page_size=PRODUCT_LIST_LIMIT, context="products list"):
+            if estado is not None and bool(data.get("estado", True)) != estado:
+                continue
             if normalized_query:
                 haystack = " ".join(
                     str(data.get(field) or "")
@@ -180,8 +247,8 @@ class FirestoreInventoryRepository:
                 ).casefold()
                 if normalized_query not in haystack:
                     continue
-            products.append(normalize_product_doc(snapshot.id, data, include_financials))
-        return products
+            products.append(normalize_product_doc(product_id, data, include_financials))
+        return sorted(products, key=lambda item: item["nombre"].casefold())
 
     def list_catalog_products(
         self,
@@ -195,39 +262,30 @@ class FirestoreInventoryRepository:
         limit = max(min(limit, 50), 1)
         offset = (page - 1) * limit
         normalized_query = _normalize_query(query)
-        ref = _where(self.products, "estado", "==", True)
-
-        if marca:
-            ref = _where(ref, "marca", "==", marca.strip())
-        if categoria:
-            ref = _where(ref, "categoria", "==", categoria.strip())
-
-        if normalized_query:
-            return self._scan_catalog_products(ref, offset, limit, normalized_query)
-
-        try:
-            snapshots = _safe_stream(
-                ref.order_by("cantidad", direction=firestore.Query.DESCENDING).offset(offset),
-                limit=limit + 1,
-                context="catalog optimized query",
-            )
-            items = []
-            for snapshot in snapshots:
-                data = snapshot.to_dict() or {}
-                if int(data.get("cantidad", 0)) <= 0:
+        normalized_brand = _normalize_query(marca)
+        normalized_category = _normalize_query(categoria)
+        matched = []
+        for product_id, data in _rest_collection_documents("productos", page_size=PRODUCT_LIST_LIMIT, context="catalog products"):
+            if not bool(data.get("estado", True)) or int(data.get("cantidad", 0)) <= 0:
+                continue
+            if normalized_brand and _normalize_query(str(data.get("marca") or "")) != normalized_brand:
+                continue
+            if normalized_category and _normalize_query(str(data.get("categoria") or "")) != normalized_category:
+                continue
+            if normalized_query:
+                haystack = " ".join(
+                    str(data.get(field) or "")
+                    for field in ("nombre", "marca", "sku", "categoria")
+                ).casefold()
+                if normalized_query not in haystack:
                     continue
-                items.append(normalize_product_doc(snapshot.id, data, False))
-                if len(items) >= limit:
-                    break
-            has_more = len(snapshots) > limit
-            return {
-                "items": items,
-                "total_count": offset + len(items) + (1 if has_more else 0),
-                "has_more": has_more,
-            }
-        except Exception:
-            logger.exception("catalog optimized query failed; falling back to bounded scan")
-            return self._scan_catalog_products(ref, offset, limit, normalized_query)
+            matched.append(normalize_product_doc(product_id, data, False))
+        matched = sorted(matched, key=lambda item: (-int(item.get("cantidad", 0)), item["nombre"].casefold()))
+        return {
+            "items": matched[offset : offset + limit],
+            "total_count": len(matched),
+            "has_more": offset + limit < len(matched),
+        }
 
     def _scan_catalog_products(self, ref, offset: int, limit: int, normalized_query: str) -> dict:
         scan_limit = min(CATALOG_FALLBACK_SCAN_LIMIT, max(offset + (limit * 4), limit + 1, 50))
@@ -488,12 +546,12 @@ class FirestoreInventoryRepository:
     def list_customers(self, query: str | None) -> list[dict]:
         normalized_query = _normalize_query(query)
         customers = []
-        customer_query = _where(self.customers, "estado", "==", True)
-        for snapshot in _safe_stream(customer_query, limit=CUSTOMER_SCAN_LIMIT, context="customers list"):
-            data = snapshot.to_dict() or {}
+        for customer_id, data in _rest_collection_documents("clientes", page_size=CUSTOMER_SCAN_LIMIT, context="customers list"):
+            if not bool(data.get("estado", True)):
+                continue
             if normalized_query and normalized_query not in _customer_haystack(data):
                 continue
-            customers.append(normalize_customer_doc(snapshot.id, data))
+            customers.append(normalize_customer_doc(customer_id, data))
         return sorted(customers, key=lambda item: item["nombre"].casefold())[:80]
 
     def create_customer(self, payload: CustomerCreate, user: AuthenticatedUser) -> dict:
@@ -844,24 +902,24 @@ class FirestoreInventoryRepository:
 
     def dashboard_summary(self) -> dict:
         today = datetime.now(ZoneInfo(get_settings().timezone)).date().isoformat()
-        sales_query = _where(_where(self.sales, "fechaLocal", "==", today), "estado", "==", True)
         sales = [
-            snapshot.to_dict() or {}
-            for snapshot in _safe_stream(sales_query, limit=SALES_TODAY_LIMIT, context="dashboard today sales")
+            sale
+            for _sale_id, sale in _rest_collection_documents("ventas", page_size=SALES_TODAY_LIMIT, context="dashboard today sales")
+            if sale.get("fechaLocal") == today and bool(sale.get("estado", True))
         ]
         total = sum(int(sale.get("totalCentavos", 0)) for sale in sales)
         count = len(sales)
         alerts = []
-        products_query = _where(self.products, "estado", "==", True)
-        for snapshot in _safe_stream(products_query, limit=PRODUCT_LIST_LIMIT, context="dashboard stock"):
-            product = snapshot.to_dict() or {}
+        for product_id, product in _rest_collection_documents("productos", page_size=PRODUCT_LIST_LIMIT, context="dashboard stock"):
+            if not bool(product.get("estado", True)):
+                continue
             cantidad = int(product.get("cantidad", 0))
             stock_minimo = int(product.get("stockMinimo", 0))
             if cantidad <= 0 or cantidad <= stock_minimo:
                 severity = "critical" if cantidad <= 0 else "warning"
                 alerts.append(
                     {
-                        "producto": normalize_product_doc(snapshot.id, product, False),
+                        "producto": normalize_product_doc(product_id, product, False),
                         "severity": severity,
                     }
                 )

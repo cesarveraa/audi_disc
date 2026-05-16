@@ -7,6 +7,7 @@ import firebase_admin
 from firebase_admin import credentials, firestore
 from google.cloud import firestore as google_firestore
 from google.cloud.firestore_v1.services.firestore import client as firestore_gapic_client
+from google.auth.transport.requests import AuthorizedSession
 
 from app.core.config import Settings, get_settings
 
@@ -14,6 +15,7 @@ logger = logging.getLogger("audidisc.firebase")
 _google_credentials = None
 _firestore_project_id: str | None = None
 _rest_firestore_client = None
+_authorized_session: AuthorizedSession | None = None
 
 
 class RestFirestoreClient(google_firestore.Client):
@@ -108,7 +110,7 @@ def get_firestore_client():
     global _rest_firestore_client
     initialize_firebase()
     settings = get_settings()
-    if settings.firestore_transport.casefold() == "rest":
+    if settings.firestore_transport.casefold() == "rest-sdk":
         if _rest_firestore_client is None:
             _rest_firestore_client = RestFirestoreClient(
                 project=_firestore_project_id or settings.firebase_project_id,
@@ -117,3 +119,16 @@ def get_firestore_client():
             logger.info("Firestore client initialized transport=rest project_id=%s", _firestore_project_id)
         return _rest_firestore_client
     return firestore.client()
+
+
+def get_firestore_rest_session() -> tuple[AuthorizedSession, str]:
+    global _authorized_session
+    initialize_firebase()
+    project_id = _firestore_project_id or get_settings().firebase_project_id
+    if not project_id:
+        raise RuntimeError("Firebase project_id is required for Firestore REST reads")
+    if _google_credentials is None:
+        raise RuntimeError("Firebase credentials are required for Firestore REST reads")
+    if _authorized_session is None:
+        _authorized_session = AuthorizedSession(_google_credentials)
+    return _authorized_session, project_id
