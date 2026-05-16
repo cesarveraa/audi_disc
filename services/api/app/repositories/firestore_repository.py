@@ -40,6 +40,13 @@ DEFAULT_LEAD_TIME_DAYS = 7
 DEAD_STOCK_DAYS = 122
 CATALOG_FALLBACK_SCAN_LIMIT = 600
 CATALOG_QUERY_TIMEOUT_SECONDS = 6.0
+FIRESTORE_QUERY_TIMEOUT_SECONDS = 7.0
+PRODUCT_LIST_LIMIT = 1_500
+CUSTOMER_SCAN_LIMIT = 300
+CUSTOMER_SALES_LIMIT = 250
+SALES_TODAY_LIMIT = 600
+SALES_RANGE_LIMIT = 1_500
+ACTIVE_SALES_LIMIT = 3_000
 
 
 def _normalize_query(value: str | None) -> str:
@@ -48,6 +55,16 @@ def _normalize_query(value: str | None) -> str:
 
 def _where(query, field: str, operator: str, value: object):
     return query.where(filter=FieldFilter(field, operator, value))
+
+
+def _safe_stream(query, *, limit: int | None = None, context: str = "firestore") -> list:
+    try:
+        if limit is not None:
+            query = query.limit(limit)
+        return list(query.stream(timeout=FIRESTORE_QUERY_TIMEOUT_SECONDS))
+    except Exception:
+        logger.exception("%s query failed or timed out", context)
+        return []
 
 
 def _sale_to_response(sale_id: str, data: dict, include_financials: bool) -> dict:
@@ -134,11 +151,11 @@ class FirestoreInventoryRepository:
     def list_products(self, estado: bool | None, query: str | None, include_financials: bool) -> list[dict]:
         ref = self.products
         if estado is not None:
-            ref = ref.where("estado", "==", estado)
+            ref = _where(ref, "estado", "==", estado)
 
         normalized_query = _normalize_query(query)
         products = []
-        for snapshot in ref.stream():
+        for snapshot in _safe_stream(ref, limit=PRODUCT_LIST_LIMIT, context="products list"):
             data = snapshot.to_dict() or {}
             if normalized_query:
                 haystack = " ".join(
@@ -202,7 +219,7 @@ class FirestoreInventoryRepository:
         matched_count = 0
         scanned_count = 0
         items = []
-        for snapshot in ref.limit(scan_limit).stream(timeout=CATALOG_QUERY_TIMEOUT_SECONDS):
+        for snapshot in _safe_stream(ref, limit=scan_limit, context="catalog fallback scan"):
             scanned_count += 1
             data = snapshot.to_dict() or {}
             if int(data.get("cantidad", 0)) <= 0:
@@ -234,7 +251,7 @@ class FirestoreInventoryRepository:
             results = query.count().get()
             return int(results[0][0].value)
         except Exception:
-            return sum(1 for _snapshot in query.stream())
+            return sum(1 for _snapshot in _safe_stream(query, context="count fallback"))
 
     def _audit_doc(
         self,
@@ -292,7 +309,7 @@ class FirestoreInventoryRepository:
         total_count = self._count_query(self.audit_logs)
         items = [
             normalize_audit_log_doc(snapshot.id, snapshot.to_dict() or {})
-            for snapshot in query.offset(offset).limit(limit).stream()
+            for snapshot in _safe_stream(query.offset(offset), limit=limit, context="audit logs")
         ]
         return {
             "items": items,
@@ -456,7 +473,8 @@ class FirestoreInventoryRepository:
     def list_customers(self, query: str | None) -> list[dict]:
         normalized_query = _normalize_query(query)
         customers = []
-        for snapshot in self.customers.where("estado", "==", True).stream():
+        customer_query = _where(self.customers, "estado", "==", True)
+        for snapshot in _safe_stream(customer_query, limit=CUSTOMER_SCAN_LIMIT, context="customers list"):
             data = snapshot.to_dict() or {}
             if normalized_query and normalized_query not in _customer_haystack(data):
                 continue
@@ -496,9 +514,10 @@ class FirestoreInventoryRepository:
         customer_snapshot = self.customers.document(customer_id).get()
         if not customer_snapshot.exists:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Customer not found")
+        sales_query = _where(_where(self.sales, "clienteId", "==", customer_id), "estado", "==", True)
         sales = [
             (snapshot.id, snapshot.to_dict() or {})
-            for snapshot in self.sales.where("clienteId", "==", customer_id).where("estado", "==", True).stream()
+            for snapshot in _safe_stream(sales_query, limit=CUSTOMER_SALES_LIMIT, context="customer sales")
         ]
         sales = sorted(sales, key=lambda item: (item[1].get("fechaLocal", ""), item[1].get("horaLocal", "")), reverse=True)
         total = sum(int(sale.get("totalCentavos", 0)) for _sale_id, sale in sales)
@@ -535,7 +554,8 @@ class FirestoreInventoryRepository:
             }
         )
 
-        for snapshot in self.push_tokens.where("estado", "==", True).stream():
+        token_query = _where(self.push_tokens, "estado", "==", True)
+        for snapshot in _safe_stream(token_query, limit=500, context="push tokens"):
             token_doc = snapshot.to_dict() or {}
             token = token_doc.get("token")
             if not token:
@@ -809,14 +829,16 @@ class FirestoreInventoryRepository:
 
     def dashboard_summary(self) -> dict:
         today = datetime.now(ZoneInfo(get_settings().timezone)).date().isoformat()
+        sales_query = _where(_where(self.sales, "fechaLocal", "==", today), "estado", "==", True)
         sales = [
             snapshot.to_dict() or {}
-            for snapshot in self.sales.where("fechaLocal", "==", today).where("estado", "==", True).stream()
+            for snapshot in _safe_stream(sales_query, limit=SALES_TODAY_LIMIT, context="dashboard today sales")
         ]
         total = sum(int(sale.get("totalCentavos", 0)) for sale in sales)
         count = len(sales)
         alerts = []
-        for snapshot in self.products.where("estado", "==", True).stream():
+        products_query = _where(self.products, "estado", "==", True)
+        for snapshot in _safe_stream(products_query, limit=PRODUCT_LIST_LIMIT, context="dashboard stock"):
             product = snapshot.to_dict() or {}
             cantidad = int(product.get("cantidad", 0))
             stock_minimo = int(product.get("stockMinimo", 0))
@@ -839,7 +861,8 @@ class FirestoreInventoryRepository:
         }
 
     def _sales_between(self, date_from: str, date_to: str) -> list[tuple[str, dict]]:
-        snapshots = self.sales.where("fechaLocal", ">=", date_from).where("fechaLocal", "<=", date_to).stream()
+        query = _where(_where(self.sales, "fechaLocal", ">=", date_from), "fechaLocal", "<=", date_to)
+        snapshots = _safe_stream(query, limit=SALES_RANGE_LIMIT, context="sales between")
         sales: list[tuple[str, dict]] = []
         for snapshot in snapshots:
             data = snapshot.to_dict() or {}
@@ -849,7 +872,8 @@ class FirestoreInventoryRepository:
 
     def _all_active_sales(self) -> list[tuple[str, dict]]:
         sales: list[tuple[str, dict]] = []
-        for snapshot in self.sales.where("estado", "==", True).stream():
+        query = _where(self.sales, "estado", "==", True)
+        for snapshot in _safe_stream(query, limit=ACTIVE_SALES_LIMIT, context="active sales"):
             data = snapshot.to_dict() or {}
             if data.get("fechaLocal"):
                 sales.append((snapshot.id, data))
@@ -954,9 +978,10 @@ class FirestoreInventoryRepository:
         today = _local_now().date()
         lookback_start = today - timedelta(days=ANALYTICS_LOOKBACK_DAYS)
         dead_stock_cutoff = today - timedelta(days=DEAD_STOCK_DAYS)
+        products_query = _where(self.products, "estado", "==", True)
         products = {
             snapshot.id: (snapshot.to_dict() or {})
-            for snapshot in self.products.where("estado", "==", True).stream()
+            for snapshot in _safe_stream(products_query, limit=PRODUCT_LIST_LIMIT, context="analytics products")
         }
 
         total_revenue = 0

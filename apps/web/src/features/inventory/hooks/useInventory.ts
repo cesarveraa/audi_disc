@@ -20,12 +20,20 @@ export function useInventory() {
     setLoading(true);
     setError(null);
     try {
-      const [nextProducts, nextDashboard] = await Promise.all([
+      const [productsResult, dashboardResult] = await Promise.allSettled([
         fetchInventoryProducts({ idToken, role: user.role }),
         fetchDashboardSummary({ idToken, role: user.role }),
       ]);
-      setProducts(nextProducts);
-      setDashboard(nextDashboard);
+      if (productsResult.status === 'fulfilled') {
+        setProducts(productsResult.value);
+      }
+      if (dashboardResult.status === 'fulfilled') {
+        setDashboard(dashboardResult.value);
+      }
+      const firstError = [productsResult, dashboardResult].find(result => result.status === 'rejected');
+      if (firstError?.status === 'rejected') {
+        setError(firstError.reason instanceof Error ? firstError.reason.message : 'No se pudo cargar toda la informacion');
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error inesperado');
     } finally {

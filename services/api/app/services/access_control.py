@@ -1,3 +1,4 @@
+import logging
 import re
 import unicodedata
 from datetime import datetime
@@ -11,6 +12,10 @@ from app.core.config import get_settings
 from app.core.firebase import get_firestore_client, initialize_firebase
 from app.core.security import ADMIN_ROLE, DEFAULT_ROLE_PERMISSIONS, PERMISSION_KEYS, SELLER_ROLE
 from app.domain.schemas import RoleCreate, RoleUpdate, UserAccessUpdate, UserCreate
+
+
+FIRESTORE_ACCESS_TIMEOUT_SECONDS = 7.0
+logger = logging.getLogger("audidisc.api.access")
 
 
 PERMISSION_DEFINITIONS = [
@@ -153,9 +158,14 @@ class AccessControlService:
 
     def list_roles(self) -> list[dict]:
         roles = dict(SYSTEM_ROLES)
-        for snapshot in self.roles.stream():
-            data = snapshot.to_dict() or {}
-            roles[snapshot.id] = _role_from_snapshot(snapshot.id, data)
+        try:
+            snapshots = self.roles.stream(timeout=FIRESTORE_ACCESS_TIMEOUT_SECONDS)
+            for snapshot in snapshots:
+                data = snapshot.to_dict() or {}
+                roles[snapshot.id] = _role_from_snapshot(snapshot.id, data)
+        except Exception:
+            logger.exception("roles query failed or timed out")
+            return sorted(roles.values(), key=lambda role: (not role["system"], role["nombre"].casefold()))
         return sorted(roles.values(), key=lambda role: (not role["system"], role["nombre"].casefold()))
 
     def get_role(self, role_id: str) -> dict:

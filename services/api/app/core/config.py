@@ -25,7 +25,7 @@ class Settings(BaseSettings):
     firebase_auth_provider_x509_cert_url: str = "https://www.googleapis.com/oauth2/v1/certs"
     cors_origins: str = "http://localhost:5173,http://127.0.0.1:5173"
     cors_origin_regex: str | None = (
-        r"^https://(audi-disc-web|audi-disc-catalog)(-[a-z0-9]+)?\.vercel\.app$"
+        r"^https://(audi-disc-web|audi-disc-catalog)(-[a-z0-9-]+)?\.vercel\.app$"
     )
     timezone: str = Field(default="America/La_Paz")
 

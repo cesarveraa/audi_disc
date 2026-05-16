@@ -4,6 +4,9 @@ import { API_URL } from '../config/api';
 import { getFirebaseApp } from '@infra/firebase/firebaseApp';
 
 export const API_BASE_URL = API_URL;
+const configuredTimeoutMs = Number(import.meta.env.VITE_API_TIMEOUT_MS);
+const REQUEST_TIMEOUT_MS =
+  Number.isFinite(configuredTimeoutMs) && configuredTimeoutMs > 0 ? configuredTimeoutMs : 15000;
 
 type ApiFetchOptions = Omit<RequestInit, 'body' | 'headers'> & {
   idToken?: string | null;
@@ -55,19 +58,27 @@ export async function apiFetch(path: string, options: ApiFetchOptions = {}) {
   }
 
   const url = apiUrl(path);
+  const controller = new AbortController();
+  const timeoutId = globalThis.setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
   let response: Response;
   try {
     response = await fetch(url, {
       ...requestOptions,
       cache: requestOptions.cache ?? 'no-store',
       headers: requestHeaders,
+      signal: requestOptions.signal ?? controller.signal,
       body: json === undefined ? undefined : JSON.stringify(json),
     });
   } catch (error) {
     if (error instanceof Error) {
       console.error('[AudiDisc Network]', requestOptions.method ?? 'GET', url, error.message);
     }
+    if (error instanceof DOMException && error.name === 'AbortError') {
+      throw new Error('El servidor esta tardando demasiado en responder. Intenta actualizar en unos segundos.');
+    }
     throw error;
+  } finally {
+    globalThis.clearTimeout(timeoutId);
   }
 
   if (!response.ok) {

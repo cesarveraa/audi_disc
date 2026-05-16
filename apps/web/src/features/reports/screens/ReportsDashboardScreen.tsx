@@ -65,12 +65,20 @@ export default function ReportsDashboardScreen() {
     setLoading(true);
     setError(null);
     try {
-      const [nextDashboard, nextHistory] = await Promise.all([
+      const [dashboardResult, historyResult] = await Promise.allSettled([
         fetchReportsDashboard({ idToken, role: user.role }),
         fetchSalesHistory({ idToken, role: user.role, dateFrom, dateTo }),
       ]);
-      setDashboard(nextDashboard);
-      setHistory(nextHistory);
+      if (dashboardResult.status === 'fulfilled') {
+        setDashboard(dashboardResult.value);
+      }
+      if (historyResult.status === 'fulfilled') {
+        setHistory(historyResult.value);
+      }
+      const firstError = [dashboardResult, historyResult].find(result => result.status === 'rejected');
+      if (firstError?.status === 'rejected') {
+        setError(firstError.reason instanceof Error ? firstError.reason.message : 'No se pudieron cargar todos los reportes');
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudieron cargar reportes');
     } finally {
