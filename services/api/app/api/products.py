@@ -3,11 +3,13 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Query
 
 from app.core.security import AuthenticatedUser, require_permission
+from app.core.timeouts import run_with_wall_timeout
 from app.dependencies import get_repository
 from app.domain.schemas import ProductCreate, ProductUpdate
 from app.repositories.base import InventoryRepository
 
 router = APIRouter(prefix="/productos", tags=["productos"])
+READ_TIMEOUT_SECONDS = 6.0
 
 
 @router.get("")
@@ -17,7 +19,12 @@ def list_products(
     estado: Annotated[bool | None, Query()] = True,
     q: Annotated[str | None, Query(max_length=120)] = None,
 ) -> list[dict]:
-    return repository.list_products(estado=estado, query=q, include_financials=user.can_view_financials)
+    return run_with_wall_timeout(
+        lambda: repository.list_products(estado=estado, query=q, include_financials=user.can_view_financials),
+        default=[],
+        context="products endpoint",
+        timeout_seconds=READ_TIMEOUT_SECONDS,
+    )
 
 
 @router.post("", status_code=201)

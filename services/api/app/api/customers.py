@@ -3,11 +3,13 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Query
 
 from app.core.security import AuthenticatedUser, require_permission
+from app.core.timeouts import run_with_wall_timeout
 from app.dependencies import get_repository
 from app.domain.schemas import CustomerCreate, CustomerUpdate
 from app.repositories.base import InventoryRepository
 
 router = APIRouter(tags=["customers"])
+READ_TIMEOUT_SECONDS = 6.0
 
 
 @router.get("/customers")
@@ -17,7 +19,12 @@ def list_customers(
     _user: Annotated[AuthenticatedUser, Depends(require_permission("customers"))],
     q: Annotated[str | None, Query(max_length=80)] = None,
 ) -> list[dict]:
-    return repository.list_customers(q)
+    return run_with_wall_timeout(
+        lambda: repository.list_customers(q),
+        default=[],
+        context="customers endpoint",
+        timeout_seconds=READ_TIMEOUT_SECONDS,
+    )
 
 
 @router.post("/customers", status_code=201)

@@ -5,6 +5,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query, Request, Response
 
+from app.core.timeouts import run_with_wall_timeout
 from app.dependencies import get_repository
 from app.domain.mappers import normalize_catalog_product_doc
 from app.domain.schemas import CatalogProductsPageResponse
@@ -14,6 +15,7 @@ router = APIRouter(prefix="/public", tags=["public"])
 
 CATALOG_CACHE_TTL_SECONDS = 60
 CATALOG_CACHE_HEADERS = "public, max-age=60, s-maxage=120, stale-while-revalidate=600"
+CATALOG_READ_TIMEOUT_SECONDS = 6.0
 _catalog_cache: dict[str, tuple[float, dict, str]] = {}
 
 
@@ -63,7 +65,12 @@ def list_public_products(
             return Response(status_code=304, headers=dict(response.headers))
         return payload
 
-    paginated = repository.list_catalog_products(page=page, limit=limit, query=q, marca=marca, categoria=categoria)
+    paginated = run_with_wall_timeout(
+        lambda: repository.list_catalog_products(page=page, limit=limit, query=q, marca=marca, categoria=categoria),
+        default={"items": [], "total_count": 0, "has_more": False},
+        context="public catalog endpoint",
+        timeout_seconds=CATALOG_READ_TIMEOUT_SECONDS,
+    )
     payload = {
         "items": [normalize_catalog_product_doc(product) for product in paginated["items"]],
         "total_count": int(paginated["total_count"]),
