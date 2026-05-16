@@ -29,6 +29,7 @@ class Settings(BaseSettings):
     )
     firebase_check_revoked_tokens: bool = False
     firebase_auth_timeout_seconds: float = 6.0
+    firestore_transport: str = "rest"
     timezone: str = Field(default="America/La_Paz")
 
     @property

@@ -6,7 +6,7 @@ import { getFirebaseApp } from '@infra/firebase/firebaseApp';
 export const API_BASE_URL = API_URL;
 const configuredTimeoutMs = Number(import.meta.env.VITE_API_TIMEOUT_MS);
 const REQUEST_TIMEOUT_MS =
-  Number.isFinite(configuredTimeoutMs) && configuredTimeoutMs > 0 ? configuredTimeoutMs : 15000;
+  Number.isFinite(configuredTimeoutMs) && configuredTimeoutMs > 0 ? configuredTimeoutMs : 45000;
 
 type ApiFetchOptions = Omit<RequestInit, 'body' | 'headers'> & {
   idToken?: string | null;
@@ -73,7 +73,7 @@ export async function apiFetch(path: string, options: ApiFetchOptions = {}) {
     if (error instanceof Error) {
       console.error('[AudiDisc Network]', requestOptions.method ?? 'GET', url, error.message);
     }
-    if (error instanceof DOMException && error.name === 'AbortError') {
+    if (error instanceof Error && error.name === 'AbortError') {
       throw new Error('El servidor esta tardando demasiado en responder. Intenta actualizar en unos segundos.');
     }
     throw error;

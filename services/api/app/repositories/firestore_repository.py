@@ -2,6 +2,8 @@ import hashlib
 import logging
 import math
 from collections import defaultdict
+from queue import Empty, Queue
+from threading import Thread
 from datetime import date, datetime, timedelta
 from zoneinfo import ZoneInfo
 
@@ -39,8 +41,8 @@ ANALYTICS_LOOKBACK_DAYS = 90
 DEFAULT_LEAD_TIME_DAYS = 7
 DEAD_STOCK_DAYS = 122
 CATALOG_FALLBACK_SCAN_LIMIT = 600
-CATALOG_QUERY_TIMEOUT_SECONDS = 6.0
-FIRESTORE_QUERY_TIMEOUT_SECONDS = 7.0
+FIRESTORE_QUERY_TIMEOUT_SECONDS = 4.0
+FIRESTORE_QUERY_GRACE_SECONDS = 0.75
 PRODUCT_LIST_LIMIT = 1_500
 CUSTOMER_SCAN_LIMIT = 300
 CUSTOMER_SALES_LIMIT = 250
@@ -58,13 +60,27 @@ def _where(query, field: str, operator: str, value: object):
 
 
 def _safe_stream(query, *, limit: int | None = None, context: str = "firestore") -> list:
+    if limit is not None:
+        query = query.limit(limit)
+    result_queue: Queue[tuple[str, object]] = Queue(maxsize=1)
+
+    def run_query() -> None:
+        try:
+            result_queue.put(("ok", list(query.stream(timeout=FIRESTORE_QUERY_TIMEOUT_SECONDS))))
+        except Exception as exc:  # pragma: no cover - exercised only against live Firestore failures.
+            result_queue.put(("error", exc))
+
+    Thread(target=run_query, name=f"audidisc-{context.replace(' ', '-')}", daemon=True).start()
     try:
-        if limit is not None:
-            query = query.limit(limit)
-        return list(query.stream(timeout=FIRESTORE_QUERY_TIMEOUT_SECONDS))
-    except Exception:
-        logger.exception("%s query failed or timed out", context)
+        status_value, payload = result_queue.get(timeout=FIRESTORE_QUERY_TIMEOUT_SECONDS + FIRESTORE_QUERY_GRACE_SECONDS)
+    except Empty:
+        logger.warning("%s query exceeded wall timeout", context)
         return []
+
+    if status_value == "error":
+        logger.warning("%s query failed or timed out: %s", context, payload)
+        return []
+    return list(payload)
 
 
 def _sale_to_response(sale_id: str, data: dict, include_financials: bool) -> dict:
@@ -190,11 +206,10 @@ class FirestoreInventoryRepository:
             return self._scan_catalog_products(ref, offset, limit, normalized_query)
 
         try:
-            snapshots = list(
-                ref.order_by("cantidad", direction=firestore.Query.DESCENDING)
-                .offset(offset)
-                .limit(limit + 1)
-                .stream(timeout=CATALOG_QUERY_TIMEOUT_SECONDS)
+            snapshots = _safe_stream(
+                ref.order_by("cantidad", direction=firestore.Query.DESCENDING).offset(offset),
+                limit=limit + 1,
+                context="catalog optimized query",
             )
             items = []
             for snapshot in snapshots:

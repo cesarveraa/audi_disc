@@ -5,10 +5,29 @@ from urllib.parse import quote
 
 import firebase_admin
 from firebase_admin import credentials, firestore
+from google.cloud import firestore as google_firestore
+from google.cloud.firestore_v1.services.firestore import client as firestore_gapic_client
 
 from app.core.config import Settings, get_settings
 
 logger = logging.getLogger("audidisc.firebase")
+_google_credentials = None
+_firestore_project_id: str | None = None
+_rest_firestore_client = None
+
+
+class RestFirestoreClient(google_firestore.Client):
+    @property
+    def _firestore_api(self):
+        if self._firestore_api_internal is None:
+            self._firestore_api_internal = firestore_gapic_client.FirestoreClient(
+                transport="rest",
+                credentials=self._credentials,
+                client_options=self._client_options,
+                client_info=self._client_info,
+            )
+            firestore_gapic_client._client_info = self._client_info
+        return self._firestore_api_internal
 
 
 def _normalize_private_key(value: str) -> str:
@@ -67,16 +86,34 @@ def service_account_info_from_settings(settings: Settings) -> dict[str, Any]:
 
 
 def initialize_firebase() -> None:
+    global _google_credentials, _firestore_project_id
     if firebase_admin._apps:
+        app = firebase_admin.get_app()
+        if _google_credentials is None:
+            _google_credentials = app.credential.get_credential()
+        if _firestore_project_id is None:
+            _firestore_project_id = app.project_id
         return
 
     settings = get_settings()
     service_account = service_account_info_from_settings(settings)
     cred = credentials.Certificate(service_account)
+    _google_credentials = cred.get_credential()
+    _firestore_project_id = service_account["project_id"]
     firebase_admin.initialize_app(cred, {"projectId": service_account["project_id"]})
     logger.info("Firebase Admin initialized project_id=%s", service_account["project_id"])
 
 
 def get_firestore_client():
+    global _rest_firestore_client
     initialize_firebase()
+    settings = get_settings()
+    if settings.firestore_transport.casefold() == "rest":
+        if _rest_firestore_client is None:
+            _rest_firestore_client = RestFirestoreClient(
+                project=_firestore_project_id or settings.firebase_project_id,
+                credentials=_google_credentials,
+            )
+            logger.info("Firestore client initialized transport=rest project_id=%s", _firestore_project_id)
+        return _rest_firestore_client
     return firestore.client()
