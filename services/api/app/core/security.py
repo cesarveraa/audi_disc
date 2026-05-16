@@ -1,3 +1,6 @@
+import asyncio
+import hashlib
+import time
 from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Annotated
@@ -5,8 +8,10 @@ from typing import Annotated
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from firebase_admin import auth
+from starlette.concurrency import run_in_threadpool
 from starlette.responses import JSONResponse
 
+from app.core.config import get_settings
 from app.core.firebase import initialize_firebase
 
 
@@ -32,12 +37,18 @@ DEFAULT_ROLE_PERMISSIONS: dict[str, frozenset[str]] = {
 }
 
 bearer_scheme = HTTPBearer(auto_error=False)
+TOKEN_CACHE_TTL_SECONDS = 300
+TOKEN_CACHE_MAX_SIZE = 128
+_token_cache: dict[str, tuple[float, "AuthenticatedUser"]] = {}
 PUBLIC_PATHS = (
     "/",
     "/health",
     "/api/v1/health",
     "/favicon.ico",
     "/favicon.png",
+    "/audidisc.jpg",
+    "/logo.png",
+    "/logo.svg",
     "/openapi.json",
 )
 PUBLIC_PATH_PREFIXES = ("/docs", "/redoc", "/api/v1/public/")
@@ -76,10 +87,38 @@ def _permissions_from_claims(role: str, raw_permissions: object) -> frozenset[st
     return DEFAULT_ROLE_PERMISSIONS.get(role, frozenset())
 
 
+def _token_cache_key(token: str) -> str:
+    return hashlib.sha256(token.encode("utf-8")).hexdigest()
+
+
+def _cached_user(token: str) -> AuthenticatedUser | None:
+    cached = _token_cache.get(_token_cache_key(token))
+    if not cached:
+        return None
+    expires_at, user = cached
+    if expires_at <= time.monotonic():
+        _token_cache.pop(_token_cache_key(token), None)
+        return None
+    return user
+
+
+def _remember_user(token: str, user: AuthenticatedUser) -> None:
+    if len(_token_cache) >= TOKEN_CACHE_MAX_SIZE:
+        oldest_key = min(_token_cache, key=lambda key: _token_cache[key][0])
+        _token_cache.pop(oldest_key, None)
+    _token_cache[_token_cache_key(token)] = (time.monotonic() + TOKEN_CACHE_TTL_SECONDS, user)
+
+
 def user_from_token(token: str) -> AuthenticatedUser:
+    settings = get_settings()
+    if not settings.firebase_check_revoked_tokens:
+        cached = _cached_user(token)
+        if cached:
+            return cached
+
     initialize_firebase()
     try:
-        decoded = auth.verify_id_token(token, check_revoked=True)
+        decoded = auth.verify_id_token(token, check_revoked=settings.firebase_check_revoked_tokens)
     except Exception as exc:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -100,7 +139,7 @@ def user_from_token(token: str) -> AuthenticatedUser:
             detail="User role is not authorized",
         )
 
-    return AuthenticatedUser(
+    user = AuthenticatedUser(
         uid=str(decoded["uid"]),
         email=decoded.get("email"),
         display_name=decoded.get("name"),
@@ -108,6 +147,9 @@ def user_from_token(token: str) -> AuthenticatedUser:
         role_id=decoded.get("roleId") if isinstance(decoded.get("roleId"), str) else role,
         permissions=permissions,
     )
+    if not settings.firebase_check_revoked_tokens:
+        _remember_user(token, user)
+    return user
 
 
 def user_from_authorization_header(value: str | None) -> AuthenticatedUser:
@@ -138,7 +180,16 @@ async def firebase_auth_middleware(request: Request, call_next):
         return await call_next(request)
 
     try:
-        request.state.authenticated_user = user_from_authorization_header(request.headers.get("Authorization"))
+        request.state.authenticated_user = await asyncio.wait_for(
+            run_in_threadpool(user_from_authorization_header, request.headers.get("Authorization")),
+            timeout=get_settings().firebase_auth_timeout_seconds,
+        )
+    except TimeoutError:
+        return JSONResponse(
+            status_code=status.HTTP_504_GATEWAY_TIMEOUT,
+            content={"detail": "Firebase Auth timed out"},
+            headers={"X-Error-Message": "Firebase Auth timed out"},
+        )
     except HTTPException as exc:
         return JSONResponse(
             status_code=exc.status_code,

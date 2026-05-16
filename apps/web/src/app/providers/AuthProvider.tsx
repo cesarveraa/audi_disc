@@ -28,6 +28,23 @@ type AuthContextValue = {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 const SESSION_TIMEOUT_MS = 4 * 60 * 60 * 1000;
+const configuredFirebaseAuthTimeoutMs = Number(import.meta.env.VITE_FIREBASE_AUTH_TIMEOUT_MS);
+const FIREBASE_AUTH_TIMEOUT_MS =
+  Number.isFinite(configuredFirebaseAuthTimeoutMs) && configuredFirebaseAuthTimeoutMs > 0
+    ? configuredFirebaseAuthTimeoutMs
+    : 10000;
+
+function withTimeout<T>(promise: Promise<T>, message: string): Promise<T> {
+  let timeoutId: ReturnType<typeof setTimeout> | null = null;
+  const timeout = new Promise<never>((_, reject) => {
+    timeoutId = setTimeout(() => reject(new Error(message)), FIREBASE_AUTH_TIMEOUT_MS);
+  });
+  return Promise.race([promise, timeout]).finally(() => {
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+    }
+  });
+}
 
 function sessionTimeRemaining(tokenResult: { authTime?: string; claims: Record<string, unknown> }) {
   const claimAuthTime = tokenResult.claims.auth_time;
@@ -78,8 +95,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
 
         const [token, tokenResult] = await Promise.all([
-          currentUser.getIdToken(),
-          currentUser.getIdTokenResult(true),
+          withTimeout(currentUser.getIdToken(), 'Firebase tardo demasiado en entregar el token.'),
+          withTimeout(currentUser.getIdTokenResult(), 'Firebase tardo demasiado en validar los permisos.'),
         ]);
         const remainingMs = sessionTimeRemaining(tokenResult);
         if (remainingMs <= 0) {

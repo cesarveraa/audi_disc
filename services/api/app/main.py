@@ -2,7 +2,7 @@ import logging
 import sys
 import time
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Response
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api import access, analytics, audit, customers, dashboard, health, inventory, me, notifications, products, public, reports, sales
@@ -12,6 +12,14 @@ from app.repositories.base import InventoryRepository
 from app.repositories.firestore_repository import FirestoreInventoryRepository
 
 logger = logging.getLogger("audidisc.api")
+BRAND_MARK_SVG = """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96">
+<rect width="96" height="96" rx="22" fill="#050505"/>
+<circle cx="48" cy="48" r="31" fill="none" stroke="#fff" stroke-width="5"/>
+<circle cx="48" cy="48" r="17" fill="none" stroke="#fff" stroke-width="5" opacity=".88"/>
+<circle cx="48" cy="48" r="6" fill="#fff"/>
+<circle cx="70" cy="18" r="8" fill="#E4002B"/>
+<path d="M22 72 74 24" stroke="#fff" stroke-width="4" opacity=".62"/>
+</svg>"""
 
 
 def configure_logging() -> None:
@@ -55,6 +63,22 @@ def create_app(repository: InventoryRepository | None = None) -> FastAPI:
         return response
 
     app.middleware("http")(firebase_auth_middleware)
+
+    @app.get("/", include_in_schema=False)
+    def root_status() -> dict[str, str]:
+        return {"service": "Audi Disc API", "status": "ok"}
+
+    @app.get("/favicon.ico", include_in_schema=False)
+    @app.get("/favicon.png", include_in_schema=False)
+    @app.get("/audidisc.jpg", include_in_schema=False)
+    @app.get("/logo.png", include_in_schema=False)
+    @app.get("/logo.svg", include_in_schema=False)
+    def brand_mark() -> Response:
+        return Response(
+            content=BRAND_MARK_SVG,
+            media_type="image/svg+xml",
+            headers={"Cache-Control": "public, max-age=86400, immutable"},
+        )
 
     @app.middleware("http")
     async def request_logger(request, call_next):

@@ -622,6 +622,22 @@ def test_protected_routes_require_firebase_bearer_token_without_override() -> No
     assert cors_response.headers["access-control-allow-origin"] == "https://audi-disc-web-mrhl.vercel.app"
 
 
+def test_brand_assets_do_not_require_auth() -> None:
+    app = create_app(InMemoryInventoryRepository())
+    client = TestClient(app)
+
+    root_response = client.get("/")
+    favicon_response = client.get("/favicon.ico")
+    logo_response = client.get("/audidisc.jpg")
+
+    assert root_response.status_code == 200
+    assert root_response.json()["status"] == "ok"
+    assert favicon_response.status_code == 200
+    assert favicon_response.headers["content-type"].startswith("image/svg+xml")
+    assert logo_response.status_code == 200
+    assert logo_response.headers["content-type"].startswith("image/svg+xml")
+
+
 def test_public_catalog_products_do_not_require_auth_and_hide_sensitive_fields() -> None:
     app = create_app(InMemoryInventoryRepository())
     client = TestClient(app)

@@ -27,6 +27,8 @@ class Settings(BaseSettings):
     cors_origin_regex: str | None = (
         r"^https://(audi-disc-web|audi-disc-catalog)(-[a-z0-9-]+)?\.vercel\.app$"
     )
+    firebase_check_revoked_tokens: bool = False
+    firebase_auth_timeout_seconds: float = 6.0
     timezone: str = Field(default="America/La_Paz")
 
     @property
