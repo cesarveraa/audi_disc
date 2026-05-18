@@ -86,26 +86,26 @@ export function WeeklyRevenueChart({ data, showProfit }: Props) {
   const activePoint = activeIndex === null ? null : chart.points[activeIndex] ?? null;
 
   return (
-    <article className="rounded-2xl border border-white/70 bg-white/90 p-5 shadow-sm backdrop-blur-xl">
+    <article className="rounded-2xl border border-white/70 bg-white/90 p-5 shadow-sm backdrop-blur-xl dark:border-white/10 dark:bg-white/[0.06]">
       <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.16em] text-audi-red">
             RegistroDias
           </p>
-          <h2 className="mt-1 text-2xl font-semibold text-gray-950">Ventas de la semana</h2>
-          <p className="mt-1 text-sm font-medium text-gray-500">
+          <h2 className="mt-1 text-2xl font-semibold text-gray-950 dark:text-white">Ventas de la semana</h2>
+          <p className="mt-1 text-sm font-medium text-gray-500 dark:text-white/55">
             Montos diarios acumulados por fecha local.
           </p>
         </div>
-        <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-semibold text-gray-600">
+        <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-semibold text-gray-600 dark:bg-white/10 dark:text-white/60">
           {data.length} dias
         </span>
       </div>
 
-      <div className="relative aspect-video w-full overflow-visible rounded-2xl border border-gray-100 bg-[linear-gradient(180deg,#ffffff_0%,#f7f8fa_100%)] p-2">
+      <div className="relative aspect-video w-full overflow-visible rounded-2xl border border-gray-100 bg-[linear-gradient(180deg,#ffffff_0%,#f7f8fa_100%)] p-2 dark:border-white/10 dark:bg-[linear-gradient(180deg,rgba(255,255,255,0.04)_0%,rgba(255,255,255,0.02)_100%)]">
         {activePoint && (
           <div
-            className="pointer-events-none absolute z-20 min-w-44 rounded-2xl border border-gray-100 bg-white/95 px-4 py-3 text-left shadow-card backdrop-blur-xl"
+            className="pointer-events-none absolute z-20 min-w-44 rounded-2xl border border-gray-100 bg-white/95 px-4 py-3 text-left shadow-card backdrop-blur-xl dark:border-white/10 dark:bg-gray-950/95"
             style={{
               left: `${(activePoint.x / VIEWBOX_WIDTH) * 100}%`,
               top: `${(activePoint.y / VIEWBOX_HEIGHT) * 100}%`,
@@ -117,13 +117,13 @@ export function WeeklyRevenueChart({ data, showProfit }: Props) {
                     : 'translate(-50%,-118%)',
             }}
           >
-            <span className="text-xs font-semibold uppercase tracking-[0.14em] text-gray-500">
+            <span className="text-xs font-semibold uppercase tracking-[0.14em] text-gray-500 dark:text-white/55">
               {activePoint.weekday} / {activePoint.shortDate}
             </span>
-            <strong className="mt-1 block text-lg font-semibold text-gray-950">
+            <strong className="mt-1 block text-lg font-semibold text-gray-950 dark:text-white">
               {formatBsFromCentavos(activePoint.totalCentavos)}
             </strong>
-            <span className="mt-1 block text-xs font-semibold text-gray-500">
+            <span className="mt-1 block text-xs font-semibold text-gray-500 dark:text-white/55">
               {activePoint.cantidadVentas} ventas
               {showProfit ? ` / Utilidad ${formatBsFromCentavos(activePoint.utilidadCentavos ?? 0)}` : ''}
             </span>

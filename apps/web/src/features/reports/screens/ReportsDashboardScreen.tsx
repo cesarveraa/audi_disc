@@ -1,9 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  Activity,
-  AlertTriangle,
   ArrowLeft,
-  BarChart3,
   CalendarRange,
   Download,
   FileText,
@@ -152,30 +149,6 @@ export default function ReportsDashboardScreen() {
               </p>
             </div>
             <div className="flex flex-wrap gap-3">
-              <AppButton
-                variant="neutral"
-                icon={<FileSpreadsheet className="h-4 w-4" />}
-                isLoading={exporting === 'products-xlsx'}
-                onClick={() => void handleExport('products-xlsx')}
-              >
-                Excel productos
-              </AppButton>
-              <AppButton
-                variant="neutral"
-                icon={<FileText className="h-4 w-4" />}
-                isLoading={exporting === 'products-pdf'}
-                onClick={() => void handleExport('products-pdf')}
-              >
-                PDF productos
-              </AppButton>
-              <AppButton
-                variant="neutral"
-                icon={<FileText className="h-4 w-4" />}
-                isLoading={exporting === 'cash-pdf'}
-                onClick={() => void handleCashClosePdf()}
-              >
-                PDF cierre de caja
-              </AppButton>
               <AppButton variant="primary" isLoading={isLoading} onClick={() => void loadReports()}>
                 Actualizar reportes
               </AppButton>
@@ -185,21 +158,21 @@ export default function ReportsDashboardScreen() {
           {error && <div className="mb-5 rounded-panel bg-audi-red px-4 py-3 text-sm font-semibold text-white">{error}</div>}
 
           <section className="mb-5 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-            <article className="rounded-panel border border-white/70 bg-white/85 p-5 shadow-card backdrop-blur-xl">
-              <span className="text-sm font-semibold text-gray-500">Ventas hoy</span>
-              <strong className="mt-2 block text-3xl font-semibold text-gray-950">
+            <article className="rounded-panel border border-white/70 bg-white/85 p-5 shadow-card backdrop-blur-xl dark:border-white/10 dark:bg-white/[0.06]">
+              <span className="text-sm font-semibold text-gray-500 dark:text-white/55">Ventas hoy</span>
+              <strong className="mt-2 block text-3xl font-semibold text-gray-950 dark:text-white">
                 {formatBsFromCentavos(dashboard?.ventasHoy.totalCentavos ?? 0)}
               </strong>
             </article>
-            <article className="rounded-panel border border-white/70 bg-white/85 p-5 shadow-card backdrop-blur-xl">
-              <span className="text-sm font-semibold text-gray-500">Cantidad</span>
-              <strong className="mt-2 block text-3xl font-semibold text-gray-950">
+            <article className="rounded-panel border border-white/70 bg-white/85 p-5 shadow-card backdrop-blur-xl dark:border-white/10 dark:bg-white/[0.06]">
+              <span className="text-sm font-semibold text-gray-500 dark:text-white/55">Cantidad</span>
+              <strong className="mt-2 block text-3xl font-semibold text-gray-950 dark:text-white">
                 {dashboard?.ventasHoy.cantidadVentas ?? 0}
               </strong>
             </article>
-            <article className="rounded-panel border border-white/70 bg-white/85 p-5 shadow-card backdrop-blur-xl">
-              <span className="text-sm font-semibold text-gray-500">Semana</span>
-              <strong className="mt-2 block text-3xl font-semibold text-gray-950">
+            <article className="rounded-panel border border-white/70 bg-white/85 p-5 shadow-card backdrop-blur-xl dark:border-white/10 dark:bg-white/[0.06]">
+              <span className="text-sm font-semibold text-gray-500 dark:text-white/55">Semana</span>
+              <strong className="mt-2 block text-3xl font-semibold text-gray-950 dark:text-white">
                 {formatBsFromCentavos(totalWeek)}
               </strong>
             </article>
@@ -216,126 +189,112 @@ export default function ReportsDashboardScreen() {
             )}
           </section>
 
-          <section className="grid max-w-6xl gap-5 xl:grid-cols-[minmax(0,2fr)_minmax(280px,1fr)] xl:items-stretch">
+          <section className="grid gap-5 xl:grid-cols-[minmax(0,1.45fr)_minmax(360px,0.95fr)] xl:items-stretch">
             <WeeklyRevenueChart data={dashboard?.ingresosSemanales ?? []} showProfit={canViewFinancials} />
+            <YearComparisonChart data={dashboard?.comparativaInteranual ?? []} />
+          </section>
 
-            <aside className="rounded-2xl border border-white/70 bg-white/90 p-5 shadow-sm backdrop-blur-xl">
-              <div className="mb-5 flex items-start justify-between gap-3">
+          <section className="mt-5 grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(360px,0.8fr)]">
+            <article className="rounded-panel border border-white/70 bg-white/85 p-5 shadow-card backdrop-blur-xl dark:border-white/10 dark:bg-white/[0.06]">
+              <div className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-[0.16em] text-audi-red">
-                    Quick Stats
+                    Centro de exportacion
                   </p>
-                  <h2 className="mt-1 text-2xl font-semibold text-gray-950">Caja activa</h2>
+                  <h2 className="mt-1 text-2xl font-semibold text-gray-950 dark:text-white">Excel, PDF y cierre de caja</h2>
+                  <p className="mt-2 max-w-2xl text-sm font-medium text-gray-500 dark:text-white/55">
+                    Genera documentos operativos sin mezclar acciones con la lectura de graficas.
+                  </p>
                 </div>
-                <span className="grid h-10 w-10 place-items-center rounded-2xl bg-audi-red text-white shadow-button">
-                  <TrendingUp className="h-5 w-5" />
+                <span className="grid h-12 w-12 place-items-center rounded-2xl bg-audi-red text-white shadow-button">
+                  <Download className="h-5 w-5" />
                 </span>
               </div>
 
-              <div className="grid gap-4">
-                <div className="flex items-center justify-between gap-4 border-b border-gray-100 pb-4">
-                  <div className="flex items-center gap-3">
-                    <span className="grid h-10 w-10 place-items-center rounded-2xl bg-gray-100 text-gray-600">
-                      <ReceiptText className="h-5 w-5" />
-                    </span>
-                    <div>
-                      <span className="block text-sm font-semibold text-gray-500">Ventas hoy</span>
-                      <strong className="mt-1 block text-xl font-semibold text-gray-950">
-                        {formatBsFromCentavos(dashboard?.ventasHoy.totalCentavos ?? 0)}
-                      </strong>
-                    </div>
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="rounded-2xl border border-gray-100 bg-white p-4 dark:border-white/10 dark:bg-white/[0.04]">
+                  <div className="mb-3 flex items-center gap-3">
+                    <FileSpreadsheet className="h-5 w-5 text-audi-red" />
+                    <strong className="text-gray-950 dark:text-white">Productos</strong>
                   </div>
-                  <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-bold text-gray-600">
-                    {dashboard?.ventasHoy.cantidadVentas ?? 0}
-                  </span>
-                </div>
-
-                {canViewFinancials ? (
-                  <div className="flex items-center justify-between gap-4 border-b border-gray-100 pb-4">
-                    <div className="flex items-center gap-3">
-                      <span className="grid h-10 w-10 place-items-center rounded-2xl bg-audi-red text-white">
-                        <Activity className="h-5 w-5" />
-                      </span>
-                      <div>
-                        <span className="block text-sm font-semibold text-gray-500">Utilidad hoy</span>
-                        <strong className="mt-1 block text-xl font-semibold text-gray-950">
-                          {formatBsFromCentavos(dashboard?.ventasHoy.utilidadCentavos ?? 0)}
-                        </strong>
-                      </div>
-                    </div>
-                    <span className="rounded-full bg-red-50 px-3 py-1 text-xs font-bold text-audi-red">
-                      {dashboard?.ventasHoy.margenPorcentaje ?? 0}%
-                    </span>
-                  </div>
-                ) : (
-                  <div className="flex items-center justify-between gap-4 border-b border-gray-100 pb-4">
-                    <div className="flex items-center gap-3">
-                      <span className="grid h-10 w-10 place-items-center rounded-2xl bg-gray-100 text-gray-600">
-                        <Activity className="h-5 w-5" />
-                      </span>
-                      <div>
-                        <span className="block text-sm font-semibold text-gray-500">Ticket promedio</span>
-                        <strong className="mt-1 block text-xl font-semibold text-gray-950">
-                          {formatBsFromCentavos(dashboard?.ventasHoy.ticketPromedioCentavos ?? 0)}
-                        </strong>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                <div className="flex items-center justify-between gap-4 border-b border-gray-100 pb-4">
-                  <div className="flex items-center gap-3">
-                    <span className="grid h-10 w-10 place-items-center rounded-2xl bg-gray-100 text-gray-600">
-                      <BarChart3 className="h-5 w-5" />
-                    </span>
-                    <div>
-                      <span className="block text-sm font-semibold text-gray-500">Semana</span>
-                      <strong className="mt-1 block text-xl font-semibold text-gray-950">
-                        {formatBsFromCentavos(totalWeek)}
-                      </strong>
-                    </div>
+                  <div className="flex flex-wrap gap-2">
+                    <AppButton variant="neutral" icon={<FileSpreadsheet className="h-4 w-4" />} isLoading={exporting === 'products-xlsx'} onClick={() => void handleExport('products-xlsx')}>
+                      Excel
+                    </AppButton>
+                    <AppButton variant="neutral" icon={<FileText className="h-4 w-4" />} isLoading={exporting === 'products-pdf'} onClick={() => void handleExport('products-pdf')}>
+                      PDF
+                    </AppButton>
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between gap-4">
-                  <div className="flex items-center gap-3">
-                    <span className={`grid h-10 w-10 place-items-center rounded-2xl ${stockAlerts ? 'bg-audi-red text-white' : 'bg-gray-100 text-gray-600'}`}>
-                      <AlertTriangle className="h-5 w-5" />
-                    </span>
-                    <div>
-                      <span className="block text-sm font-semibold text-gray-500">Alertas stock</span>
-                      <strong className="mt-1 block text-xl font-semibold text-gray-950">
-                        {stockAlerts}
-                      </strong>
-                    </div>
+                <div className="rounded-2xl border border-gray-100 bg-white p-4 dark:border-white/10 dark:bg-white/[0.04]">
+                  <div className="mb-3 flex items-center gap-3">
+                    <ReceiptText className="h-5 w-5 text-audi-red" />
+                    <strong className="text-gray-950 dark:text-white">Ventas y caja</strong>
                   </div>
-                  <span className={`rounded-full px-3 py-1 text-xs font-bold ${stockAlerts ? 'bg-red-50 text-audi-red' : 'bg-gray-100 text-gray-600'}`}>
-                    {stockAlerts ? 'Revisar' : 'OK'}
+                  <div className="flex flex-wrap gap-2">
+                    <AppButton variant="neutral" icon={<FileSpreadsheet className="h-4 w-4" />} isLoading={exporting === 'sales-xlsx'} onClick={() => void handleExport('sales-xlsx')}>
+                      Excel ventas
+                    </AppButton>
+                    <AppButton variant="neutral" icon={<FileText className="h-4 w-4" />} isLoading={exporting === 'sales-pdf'} onClick={() => void handleExport('sales-pdf')}>
+                      PDF ventas
+                    </AppButton>
+                    <AppButton variant="neutral" icon={<FileText className="h-4 w-4" />} isLoading={exporting === 'cash-pdf'} onClick={() => void handleCashClosePdf()}>
+                      Cierre PDF
+                    </AppButton>
+                  </div>
+                </div>
+              </div>
+            </article>
+
+            <aside className="rounded-panel border border-white/70 bg-white/85 p-5 shadow-card backdrop-blur-xl dark:border-white/10 dark:bg-white/[0.06]">
+              <div className="mb-5 flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-audi-red">Quick stats</p>
+                  <h2 className="mt-1 text-2xl font-semibold text-gray-950 dark:text-white">Caja activa</h2>
+                </div>
+                <TrendingUp className="h-5 w-5 text-audi-red" />
+              </div>
+              <div className="grid gap-3">
+                {[
+                  ['Ventas hoy', formatBsFromCentavos(dashboard?.ventasHoy.totalCentavos ?? 0), `${dashboard?.ventasHoy.cantidadVentas ?? 0} ventas`],
+                  [canViewFinancials ? 'Utilidad hoy' : 'Ticket promedio', formatBsFromCentavos(canViewFinancials ? dashboard?.ventasHoy.utilidadCentavos ?? 0 : dashboard?.ventasHoy.ticketPromedioCentavos ?? 0), canViewFinancials ? `Margen ${dashboard?.ventasHoy.margenPorcentaje ?? 0}%` : 'Promedio por venta'],
+                  ['Semana', formatBsFromCentavos(totalWeek), 'Acumulado semanal'],
+                ].map(([label, value, helper]) => (
+                  <div key={label} className="rounded-2xl border border-gray-100 bg-white p-4 dark:border-white/10 dark:bg-white/[0.04]">
+                    <span className="text-sm font-semibold text-gray-500 dark:text-white/55">{label}</span>
+                    <strong className="mt-1 block text-xl font-semibold text-gray-950 dark:text-white">{value}</strong>
+                    <span className="mt-1 block text-xs font-bold text-audi-red">{helper}</span>
+                  </div>
+                ))}
+                <div className="rounded-2xl border border-gray-100 bg-white p-4 dark:border-white/10 dark:bg-white/[0.04]">
+                  <span className="text-sm font-semibold text-gray-500 dark:text-white/55">Alertas stock</span>
+                  <strong className="mt-1 block text-xl font-semibold text-gray-950 dark:text-white">{stockAlerts}</strong>
+                  <span className={`mt-1 inline-flex rounded-full px-3 py-1 text-xs font-bold ${stockAlerts ? 'bg-red-50 text-audi-red dark:bg-audi-red/15' : 'bg-gray-100 text-gray-600 dark:bg-white/10 dark:text-white/60'}`}>
+                    {stockAlerts ? 'Revisar inventario' : 'OK'}
                   </span>
                 </div>
               </div>
             </aside>
           </section>
 
-          <section className="mt-5 grid gap-5 xl:grid-cols-[minmax(0,1.2fr)_minmax(360px,0.8fr)]">
-            <YearComparisonChart data={dashboard?.comparativaInteranual ?? []} />
-            <div className="grid gap-5">
-              <article className="rounded-panel border border-white/70 bg-white/85 p-5 shadow-card backdrop-blur-xl">
+          <section className="mt-5 grid gap-5 xl:grid-cols-2">
+              <article className="rounded-panel border border-white/70 bg-white/85 p-5 shadow-card backdrop-blur-xl dark:border-white/10 dark:bg-white/[0.06]">
                 <div className="mb-4 flex items-center gap-3">
                   <span className="grid h-10 w-10 place-items-center rounded-2xl bg-audi-red text-white">
                     <Trophy className="h-5 w-5" />
                   </span>
                   <div>
                     <p className="text-xs font-semibold uppercase tracking-[0.16em] text-audi-red">Top 5</p>
-                    <h2 className="text-xl font-semibold text-gray-950">Productos mas vendidos</h2>
+                    <h2 className="text-xl font-semibold text-gray-950 dark:text-white">Productos mas vendidos</h2>
                   </div>
                 </div>
                 <div className="grid gap-3">
                   {(dashboard?.topProductos ?? []).map(product => (
-                    <div key={product.productoId} className="rounded-2xl border border-gray-100 bg-white p-4">
+                    <div key={product.productoId} className="rounded-2xl border border-gray-100 bg-white p-4 dark:border-white/10 dark:bg-white/[0.04]">
                       <div className="flex items-start justify-between gap-3">
-                        <strong className="line-clamp-1 text-sm font-semibold text-gray-950">{product.nombre}</strong>
-                        <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-bold text-gray-600">
+                        <strong className="line-clamp-1 text-sm font-semibold text-gray-950 dark:text-white">{product.nombre}</strong>
+                        <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-bold text-gray-600 dark:bg-white/10 dark:text-white/60">
                           {product.cantidadVendida} u.
                         </span>
                       </div>
@@ -354,21 +313,21 @@ export default function ReportsDashboardScreen() {
                 </div>
               </article>
 
-              <article className="rounded-panel border border-white/70 bg-white/85 p-5 shadow-card backdrop-blur-xl">
+              <article className="rounded-panel border border-white/70 bg-white/85 p-5 shadow-card backdrop-blur-xl dark:border-white/10 dark:bg-white/[0.06]">
                 <div className="mb-4 flex items-center gap-3">
                   <span className="grid h-10 w-10 place-items-center rounded-2xl bg-gray-950 text-white">
                     <UsersRound className="h-5 w-5" />
                   </span>
                   <div>
                     <p className="text-xs font-semibold uppercase tracking-[0.16em] text-audi-red">Top 5</p>
-                    <h2 className="text-xl font-semibold text-gray-950">Mejores clientes</h2>
+                    <h2 className="text-xl font-semibold text-gray-950 dark:text-white">Mejores clientes</h2>
                   </div>
                 </div>
                 <div className="grid gap-3">
                   {(dashboard?.topClientes ?? []).map((customer, index) => (
-                    <div key={`${customer.clienteId ?? customer.nombre}-${index}`} className="rounded-2xl border border-gray-100 bg-white p-4">
+                    <div key={`${customer.clienteId ?? customer.nombre}-${index}`} className="rounded-2xl border border-gray-100 bg-white p-4 dark:border-white/10 dark:bg-white/[0.04]">
                       <div className="flex items-start justify-between gap-3">
-                        <strong className="line-clamp-1 text-sm font-semibold text-gray-950">{customer.nombre}</strong>
+                        <strong className="line-clamp-1 text-sm font-semibold text-gray-950 dark:text-white">{customer.nombre}</strong>
                         <span className="rounded-full bg-red-50 px-3 py-1 text-xs font-bold text-audi-red">
                           {customer.cantidadCompras}
                         </span>
@@ -381,23 +340,22 @@ export default function ReportsDashboardScreen() {
                   ))}
                 </div>
               </article>
-            </div>
           </section>
 
-          <section className="mt-5 rounded-panel border border-white/70 bg-white/80 p-5 shadow-card backdrop-blur-xl">
+          <section className="mt-5 rounded-panel border border-white/70 bg-white/80 p-5 shadow-card backdrop-blur-xl dark:border-white/10 dark:bg-white/[0.06]">
             <div className="mb-5 flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
               <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-gray-500">RegistroDias</p>
-                <h2 className="mt-1 text-2xl font-semibold text-gray-950">Historial por rango</h2>
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-audi-red">RegistroDias</p>
+                <h2 className="mt-1 text-2xl font-semibold text-gray-950 dark:text-white">Historial por rango</h2>
               </div>
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                <label className="grid gap-1 text-sm font-semibold text-gray-600">
+                <label className="grid gap-1 text-sm font-semibold text-gray-600 dark:text-white/60">
                   Desde
-                  <input type="date" value={dateFrom} onChange={event => setDateFrom(event.target.value)} className="h-11 rounded-2xl border border-gray-200 px-3" />
+                  <input type="date" value={dateFrom} onChange={event => setDateFrom(event.target.value)} className="h-11 rounded-2xl border border-gray-200 px-3 dark:border-white/10 dark:bg-black/20" />
                 </label>
-                <label className="grid gap-1 text-sm font-semibold text-gray-600">
+                <label className="grid gap-1 text-sm font-semibold text-gray-600 dark:text-white/60">
                   Hasta
-                  <input type="date" value={dateTo} onChange={event => setDateTo(event.target.value)} className="h-11 rounded-2xl border border-gray-200 px-3" />
+                  <input type="date" value={dateTo} onChange={event => setDateTo(event.target.value)} className="h-11 rounded-2xl border border-gray-200 px-3 dark:border-white/10 dark:bg-black/20" />
                 </label>
                 <AppButton variant="neutral" icon={<CalendarRange className="h-4 w-4" />} onClick={() => void loadReports()}>
                   Consultar
@@ -405,35 +363,14 @@ export default function ReportsDashboardScreen() {
               </div>
             </div>
 
-            {canViewFinancials && (
-              <div className="mb-5 flex flex-wrap gap-3">
-                <AppButton
-                  variant="neutral"
-                  icon={<FileSpreadsheet className="h-4 w-4" />}
-                  isLoading={exporting === 'sales-xlsx'}
-                  onClick={() => void handleExport('sales-xlsx')}
-                >
-                  Excel ventas
-                </AppButton>
-                <AppButton
-                  variant="neutral"
-                  icon={<Download className="h-4 w-4" />}
-                  isLoading={exporting === 'sales-pdf'}
-                  onClick={() => void handleExport('sales-pdf')}
-                >
-                  PDF ventas
-                </AppButton>
-              </div>
-            )}
-
             <div className="mb-4 grid gap-3 md:grid-cols-3">
-              <div className="rounded-2xl bg-gray-50 p-4">
-                <span className="text-sm font-semibold text-gray-500">Total rango</span>
-                <strong className="mt-1 block text-xl font-semibold">{formatBsFromCentavos(history?.totalCentavos ?? 0)}</strong>
+              <div className="rounded-2xl bg-gray-50 p-4 dark:bg-white/[0.04]">
+                <span className="text-sm font-semibold text-gray-500 dark:text-white/55">Total rango</span>
+                <strong className="mt-1 block text-xl font-semibold text-gray-950 dark:text-white">{formatBsFromCentavos(history?.totalCentavos ?? 0)}</strong>
               </div>
-              <div className="rounded-2xl bg-gray-50 p-4">
-                <span className="text-sm font-semibold text-gray-500">Ventas</span>
-                <strong className="mt-1 block text-xl font-semibold">{history?.cantidadVentas ?? 0}</strong>
+              <div className="rounded-2xl bg-gray-50 p-4 dark:bg-white/[0.04]">
+                <span className="text-sm font-semibold text-gray-500 dark:text-white/55">Ventas</span>
+                <strong className="mt-1 block text-xl font-semibold text-gray-950 dark:text-white">{history?.cantidadVentas ?? 0}</strong>
               </div>
               {canViewFinancials && (
                 <div className="rounded-2xl bg-audi-red p-4 text-white">
@@ -443,13 +380,13 @@ export default function ReportsDashboardScreen() {
               )}
             </div>
 
-            <div className="overflow-hidden rounded-panel border border-gray-100 bg-white">
+            <div className="overflow-hidden rounded-panel border border-gray-100 bg-white dark:border-white/10 dark:bg-white/[0.04]">
               {(history?.ventas ?? []).map(sale => (
-                <div key={sale.id} className="grid gap-3 border-b border-gray-100 p-4 last:border-b-0 lg:grid-cols-[1fr_auto] lg:items-center">
+                <div key={sale.id} className="grid gap-3 border-b border-gray-100 p-4 last:border-b-0 dark:border-white/10 lg:grid-cols-[1fr_auto] lg:items-center">
                   <div>
-                    <strong className="block text-gray-950">{sale.id}</strong>
-                    <span className="text-sm font-medium text-gray-500">{sale.fechaLocal} / {sale.horaLocal} / {sale.metodo}</span>
-                    <div className="mt-2 text-sm text-gray-600">
+                    <strong className="block text-gray-950 dark:text-white">{sale.id}</strong>
+                    <span className="text-sm font-medium text-gray-500 dark:text-white/55">{sale.fechaLocal} / {sale.horaLocal} / {sale.metodo}</span>
+                    <div className="mt-2 text-sm text-gray-600 dark:text-white/60">
                       {sale.productos.map(item => (
                         <span key={`${sale.id}-${item.productoId}`} className="mr-3 inline-block">
                           {item.nombre} x{item.cantidad}
@@ -458,7 +395,7 @@ export default function ReportsDashboardScreen() {
                     </div>
                   </div>
                   <div className="text-left lg:text-right">
-                    <strong className="block text-lg text-gray-950">{formatBsFromCentavos(sale.totalCentavos)}</strong>
+                    <strong className="block text-lg text-gray-950 dark:text-white">{formatBsFromCentavos(sale.totalCentavos)}</strong>
                     {canViewFinancials && (
                       <span className="text-sm font-semibold text-audi-red">
                         Utilidad {formatBsFromCentavos(sale.productos.reduce((sum, item) => sum + (item.utilidadCentavos ?? 0), 0))}

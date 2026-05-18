@@ -23,6 +23,7 @@ import type { AnalyticsDashboard, ParetoProductMetric } from '@audidisc/shared';
 import { formatBsFromCentavos } from '@audidisc/shared';
 
 import { useRequiredAuth } from '@app/providers/AuthProvider';
+import { useTheme } from '@app/providers/ThemeProvider';
 import { AppSidebar } from '@app/navigation/AppSidebar';
 import { AppButton } from '@core/ui/AppButton';
 import { fetchAnalyticsDashboard } from '@features/analytics/services/analyticsService';
@@ -103,16 +104,16 @@ function MetricCard({
 }) {
   return (
     <article className={[
-      'rounded-panel border p-5 shadow-card',
+      'rounded-panel border p-5 shadow-card backdrop-blur-xl',
       tone === 'red'
         ? 'border-audi-red bg-audi-red text-white'
-        : 'border-white/10 bg-white/[0.06] text-white',
+        : 'border-white/70 bg-white/85 text-gray-950 dark:border-white/10 dark:bg-white/[0.06] dark:text-white',
     ].join(' ')}>
-      <span className={tone === 'red' ? 'text-sm font-semibold text-white/75' : 'text-sm font-semibold text-white/55'}>
+      <span className={tone === 'red' ? 'text-sm font-semibold text-white/75' : 'text-sm font-semibold text-gray-500 dark:text-white/55'}>
         {label}
       </span>
       <strong className="mt-2 block text-3xl font-semibold tracking-tight">{value}</strong>
-      <p className={tone === 'red' ? 'mt-2 text-sm font-medium text-white/75' : 'mt-2 text-sm font-medium text-white/45'}>
+      <p className={tone === 'red' ? 'mt-2 text-sm font-medium text-white/75' : 'mt-2 text-sm font-medium text-gray-500 dark:text-white/45'}>
         {helper}
       </p>
     </article>
@@ -121,7 +122,7 @@ function MetricCard({
 
 function EmptyState({ children }: { children: string }) {
   return (
-    <div className="grid min-h-72 place-items-center rounded-panel border border-white/10 bg-white/[0.04] p-8 text-center text-sm font-semibold text-white/45">
+    <div className="grid min-h-72 place-items-center rounded-panel border border-gray-100 bg-white/70 p-8 text-center text-sm font-semibold text-gray-500 dark:border-white/10 dark:bg-white/[0.04] dark:text-white/45">
       {children}
     </div>
   );
@@ -129,6 +130,7 @@ function EmptyState({ children }: { children: string }) {
 
 export default function AdvancedAnalyticsScreen() {
   const { idToken, logout, user } = useRequiredAuth();
+  const { theme } = useTheme();
   const [dashboard, setDashboard] = useState<AnalyticsDashboard | null>(null);
   const [isLoading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -176,6 +178,12 @@ export default function AdvancedAnalyticsScreen() {
   }, [dashboard]);
 
   const topPareto: ParetoProductMetric | undefined = dashboard?.pareto.items[0];
+  const isDark = theme === 'dark';
+  const axisColor = isDark ? 'rgba(255,255,255,0.55)' : '#64748B';
+  const mutedAxisColor = isDark ? 'rgba(255,255,255,0.45)' : '#94A3B8';
+  const gridColor = isDark ? 'rgba(255,255,255,0.08)' : '#E5E7EB';
+  const contrastLine = isDark ? '#FFFFFF' : '#111827';
+  const legendColor = isDark ? 'rgba(255,255,255,0.62)' : '#475569';
 
   return (
     <main className="ad-page">
@@ -185,15 +193,15 @@ export default function AdvancedAnalyticsScreen() {
         <section className="ad-content min-w-0 px-4 py-5 sm:px-6 lg:px-8 lg:py-8">
           <header className="mb-6 flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
             <div>
-              <a href="/reportes" className="mb-5 inline-flex items-center gap-2 text-sm font-semibold text-white/45 transition hover:text-white">
+              <a href="/reportes" className="mb-5 inline-flex items-center gap-2 text-sm font-semibold text-gray-500 transition hover:text-gray-950 dark:text-white/45 dark:hover:text-white">
                 <ArrowLeft className="h-4 w-4" />
                 Volver a reportes
               </a>
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-audi-red">Business Intelligence</p>
-              <h1 className="mt-3 text-4xl font-semibold tracking-tight text-white sm:text-5xl">
+              <h1 className="mt-3 text-4xl font-semibold tracking-tight text-gray-950 dark:text-white sm:text-5xl">
                 Graficos Avanzados
               </h1>
-              <p className="mt-4 max-w-3xl text-base leading-7 text-white/50">
+              <p className="mt-4 max-w-3xl text-base leading-7 text-gray-500 dark:text-white/50">
                 Pareto 80/20, estacionalidad, margen real y optimizacion de inventario protegidos para Administrador.
               </p>
             </div>
@@ -234,13 +242,13 @@ export default function AdvancedAnalyticsScreen() {
           </section>
 
           <section className="grid gap-5 xl:grid-cols-[minmax(0,1.55fr)_minmax(320px,0.85fr)]">
-            <article className="rounded-panel border border-white/10 bg-white/[0.06] p-5 shadow-card">
+            <article className="rounded-panel border border-white/70 bg-white/85 p-5 shadow-card backdrop-blur-xl dark:border-white/10 dark:bg-white/[0.06]">
               <div className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-[0.16em] text-audi-red">Pareto 80/20</p>
-                  <h2 className="mt-1 text-2xl font-semibold">Productos que mueven la caja</h2>
+                  <h2 className="mt-1 text-2xl font-semibold text-gray-950 dark:text-white">Productos que mueven la caja</h2>
                 </div>
-                <span className="rounded-full border border-white/10 px-3 py-1 text-xs font-bold text-white/55" title="Clase A: productos que acumulan cerca del 80% de los ingresos.">
+                <span className="rounded-full border border-gray-200 bg-white px-3 py-1 text-xs font-bold text-gray-500 dark:border-white/10 dark:bg-transparent dark:text-white/55" title="Clase A: productos que acumulan cerca del 80% de los ingresos.">
                   Tooltip Clase A activo
                 </span>
               </div>
@@ -249,14 +257,14 @@ export default function AdvancedAnalyticsScreen() {
                   <div className="h-[390px] min-w-[720px]">
                     <ResponsiveContainer width="100%" height="100%">
                       <ComposedChart data={paretoChart} margin={{ top: 12, right: 8, bottom: 8, left: 0 }}>
-                        <CartesianGrid stroke="rgba(255,255,255,0.08)" vertical={false} />
-                        <XAxis dataKey="shortName" tick={{ fill: 'rgba(255,255,255,0.55)', fontSize: 12 }} axisLine={false} tickLine={false} />
-                        <YAxis yAxisId="left" tickFormatter={moneyTick} tick={{ fill: 'rgba(255,255,255,0.45)', fontSize: 12 }} axisLine={false} tickLine={false} />
-                        <YAxis yAxisId="right" orientation="right" tickFormatter={percentTick} tick={{ fill: 'rgba(255,255,255,0.45)', fontSize: 12 }} axisLine={false} tickLine={false} />
+                        <CartesianGrid stroke={gridColor} vertical={false} />
+                        <XAxis dataKey="shortName" tick={{ fill: axisColor, fontSize: 12 }} axisLine={false} tickLine={false} />
+                        <YAxis yAxisId="left" tickFormatter={moneyTick} tick={{ fill: mutedAxisColor, fontSize: 12 }} axisLine={false} tickLine={false} />
+                        <YAxis yAxisId="right" orientation="right" tickFormatter={percentTick} tick={{ fill: mutedAxisColor, fontSize: 12 }} axisLine={false} tickLine={false} />
                         <Tooltip content={<ChartTooltip />} />
-                        <Legend wrapperStyle={{ color: 'rgba(255,255,255,0.62)', fontSize: 12 }} />
+                        <Legend wrapperStyle={{ color: legendColor, fontSize: 12 }} />
                         <Bar yAxisId="left" name="Ingresos" dataKey="totalCentavos" radius={[8, 8, 0, 0]} fill="#E4002B" />
-                        <Line yAxisId="right" name="% acumulado" type="monotone" dataKey="cumulativeSharePorcentaje" stroke="#FFFFFF" strokeWidth={2} dot={{ r: 3 }} />
+                        <Line yAxisId="right" name="% acumulado" type="monotone" dataKey="cumulativeSharePorcentaje" stroke={contrastLine} strokeWidth={2} dot={{ r: 3 }} />
                       </ComposedChart>
                     </ResponsiveContainer>
                   </div>
@@ -266,11 +274,11 @@ export default function AdvancedAnalyticsScreen() {
               )}
             </article>
 
-            <article className="rounded-panel border border-white/10 bg-white/[0.06] p-5 shadow-card">
+            <article className="rounded-panel border border-white/70 bg-white/85 p-5 shadow-card backdrop-blur-xl dark:border-white/10 dark:bg-white/[0.06]">
               <div className="mb-5 flex items-start justify-between gap-3">
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-[0.16em] text-audi-red">Clasificacion</p>
-                  <h2 className="mt-1 text-2xl font-semibold">Mix Pareto</h2>
+                  <h2 className="mt-1 text-2xl font-semibold text-gray-950 dark:text-white">Mix Pareto</h2>
                 </div>
                 <TrendingUp className="h-5 w-5 text-audi-red" />
               </div>
@@ -292,14 +300,14 @@ export default function AdvancedAnalyticsScreen() {
               )}
               <div className="mt-4 grid gap-3">
                 {(dashboard?.pareto.items ?? []).slice(0, 3).map(item => (
-                  <div key={item.productoId} className="rounded-2xl border border-white/10 bg-black/20 p-3">
+                  <div key={item.productoId} className="rounded-2xl border border-gray-100 bg-white p-3 dark:border-white/10 dark:bg-black/20">
                     <div className="flex items-start justify-between gap-3">
-                      <strong className="line-clamp-1 text-sm">{item.nombre}</strong>
+                      <strong className="line-clamp-1 text-sm text-gray-950 dark:text-white">{item.nombre}</strong>
                       <span className="rounded-full bg-audi-red px-2 py-1 text-[11px] font-bold">
                         Clase {item.paretoClass}
                       </span>
                     </div>
-                    <p className="mt-2 text-sm font-semibold text-white/55">
+                    <p className="mt-2 text-sm font-semibold text-gray-500 dark:text-white/55">
                       {formatBsFromCentavos(item.totalCentavos)} / {item.revenueSharePorcentaje}%
                     </p>
                   </div>
@@ -309,23 +317,23 @@ export default function AdvancedAnalyticsScreen() {
           </section>
 
           <section className="mt-5 grid gap-5 xl:grid-cols-[minmax(0,1.4fr)_minmax(320px,0.9fr)]">
-            <article className="rounded-panel border border-white/10 bg-white/[0.06] p-5 shadow-card">
+            <article className="rounded-panel border border-white/70 bg-white/85 p-5 shadow-card backdrop-blur-xl dark:border-white/10 dark:bg-white/[0.06]">
               <div className="mb-5">
                 <p className="text-xs font-semibold uppercase tracking-[0.16em] text-audi-red">Tendencias</p>
-                <h2 className="mt-1 text-2xl font-semibold">Ventas mensuales y margen</h2>
+                <h2 className="mt-1 text-2xl font-semibold text-gray-950 dark:text-white">Ventas mensuales y margen</h2>
               </div>
               {trendChart.length ? (
                 <div className="overflow-x-auto pb-2">
                   <div className="h-[340px] min-w-[680px]">
                     <ResponsiveContainer width="100%" height="100%">
                       <ComposedChart data={trendChart} margin={{ top: 12, right: 8, bottom: 8, left: 0 }}>
-                        <CartesianGrid stroke="rgba(255,255,255,0.08)" vertical={false} />
-                        <XAxis dataKey="mes" tick={{ fill: 'rgba(255,255,255,0.55)', fontSize: 12 }} axisLine={false} tickLine={false} />
-                        <YAxis tickFormatter={moneyTick} tick={{ fill: 'rgba(255,255,255,0.45)', fontSize: 12 }} axisLine={false} tickLine={false} />
+                        <CartesianGrid stroke={gridColor} vertical={false} />
+                        <XAxis dataKey="mes" tick={{ fill: axisColor, fontSize: 12 }} axisLine={false} tickLine={false} />
+                        <YAxis tickFormatter={moneyTick} tick={{ fill: mutedAxisColor, fontSize: 12 }} axisLine={false} tickLine={false} />
                         <Tooltip content={<ChartTooltip />} />
-                        <Legend wrapperStyle={{ color: 'rgba(255,255,255,0.62)', fontSize: 12 }} />
+                        <Legend wrapperStyle={{ color: legendColor, fontSize: 12 }} />
                         <Bar name="Ingresos" dataKey="totalCentavos" radius={[8, 8, 0, 0]} fill="#E4002B" />
-                        <Line name="Utilidad" type="monotone" dataKey="utilidadCentavos" stroke="#FFFFFF" strokeWidth={2} dot={{ r: 3 }} />
+                        <Line name="Utilidad" type="monotone" dataKey="utilidadCentavos" stroke={contrastLine} strokeWidth={2} dot={{ r: 3 }} />
                       </ComposedChart>
                     </ResponsiveContainer>
                   </div>
@@ -335,28 +343,28 @@ export default function AdvancedAnalyticsScreen() {
               )}
             </article>
 
-            <article className="rounded-panel border border-white/10 bg-white/[0.06] p-5 shadow-card">
+            <article className="rounded-panel border border-white/70 bg-white/85 p-5 shadow-card backdrop-blur-xl dark:border-white/10 dark:bg-white/[0.06]">
               <div className="mb-5 flex items-start justify-between gap-3">
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-[0.16em] text-audi-red">Estacionalidad</p>
-                  <h2 className="mt-1 text-2xl font-semibold">Audifonos</h2>
+                  <h2 className="mt-1 text-2xl font-semibold text-gray-950 dark:text-white">Audifonos</h2>
                 </div>
                 <Boxes className="h-5 w-5 text-audi-red" />
               </div>
               <div className="grid gap-3">
                 {(dashboard?.tendencias.mesesFuertesAudifonos ?? []).map(month => (
-                  <div key={month.mes} className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                  <div key={month.mes} className="rounded-2xl border border-gray-100 bg-white p-4 dark:border-white/10 dark:bg-black/20">
                     <div className="flex items-center justify-between gap-4">
-                      <strong>{month.mes}</strong>
-                      <span className="rounded-full bg-white px-3 py-1 text-xs font-bold text-gray-950">
+                      <strong className="text-gray-950 dark:text-white">{month.mes}</strong>
+                      <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-bold text-gray-950 dark:bg-white dark:text-gray-950">
                         {month.cantidad} u.
                       </span>
                     </div>
-                    <p className="mt-2 text-sm font-semibold text-white/55">{formatBsFromCentavos(month.totalCentavos)}</p>
+                    <p className="mt-2 text-sm font-semibold text-gray-500 dark:text-white/55">{formatBsFromCentavos(month.totalCentavos)}</p>
                   </div>
                 ))}
                 {!(dashboard?.tendencias.mesesFuertesAudifonos.length) && (
-                  <p className="rounded-2xl border border-white/10 bg-black/20 p-4 text-sm font-semibold text-white/45">
+                  <p className="rounded-2xl border border-gray-100 bg-white p-4 text-sm font-semibold text-gray-500 dark:border-white/10 dark:bg-black/20 dark:text-white/45">
                     Aun no hay ventas etiquetadas como audifonos.
                   </p>
                 )}
@@ -365,20 +373,20 @@ export default function AdvancedAnalyticsScreen() {
           </section>
 
           <section className="mt-5 grid gap-5 xl:grid-cols-2">
-            <article className="rounded-panel border border-white/10 bg-white/[0.06] p-5 shadow-card">
+            <article className="rounded-panel border border-white/70 bg-white/85 p-5 shadow-card backdrop-blur-xl dark:border-white/10 dark:bg-white/[0.06]">
               <div className="mb-5">
                 <p className="text-xs font-semibold uppercase tracking-[0.16em] text-audi-red">Investigacion de operaciones</p>
-                <h2 className="mt-1 text-2xl font-semibold">Punto de pedido</h2>
-                <p className="mt-2 text-sm font-semibold text-white/45">
+                <h2 className="mt-1 text-2xl font-semibold text-gray-950 dark:text-white">Punto de pedido</h2>
+                <p className="mt-2 text-sm font-semibold text-gray-500 dark:text-white/45">
                   ROP = demanda media diaria x {dashboard?.inventario.leadTimeDias ?? 7} dias + stock de seguridad.
                 </p>
               </div>
-              <div className="overflow-hidden rounded-panel border border-white/10">
+              <div className="overflow-hidden rounded-panel border border-gray-100 bg-white dark:border-white/10 dark:bg-transparent">
                 {(dashboard?.inventario.reorderAlerts ?? []).slice(0, 8).map(item => (
-                  <div key={item.productoId} className="grid gap-3 border-b border-white/10 p-4 last:border-b-0 md:grid-cols-[1fr_auto] md:items-center">
+                  <div key={item.productoId} className="grid gap-3 border-b border-gray-100 p-4 last:border-b-0 dark:border-white/10 md:grid-cols-[1fr_auto] md:items-center">
                     <div>
-                      <strong className="block">{item.nombre}</strong>
-                      <span className="mt-1 block text-sm font-semibold text-white/45">
+                      <strong className="block text-gray-950 dark:text-white">{item.nombre}</strong>
+                      <span className="mt-1 block text-sm font-semibold text-gray-500 dark:text-white/45">
                         Stock {item.stockActual} / ROP {item.reorderPoint} / demanda diaria {item.demandaMediaDiaria}
                       </span>
                     </div>
@@ -388,35 +396,35 @@ export default function AdvancedAnalyticsScreen() {
                   </div>
                 ))}
                 {!(dashboard?.inventario.reorderAlerts.length) && (
-                  <div className="p-8 text-center text-sm font-semibold text-white/45">Sin alertas de reposicion.</div>
+                  <div className="p-8 text-center text-sm font-semibold text-gray-500 dark:text-white/45">Sin alertas de reposicion.</div>
                 )}
               </div>
             </article>
 
-            <article className="rounded-panel border border-white/10 bg-white/[0.06] p-5 shadow-card">
+            <article className="rounded-panel border border-white/70 bg-white/85 p-5 shadow-card backdrop-blur-xl dark:border-white/10 dark:bg-white/[0.06]">
               <div className="mb-5">
                 <p className="text-xs font-semibold uppercase tracking-[0.16em] text-audi-red">Liquidaciones</p>
-                <h2 className="mt-1 text-2xl font-semibold">Stock muerto</h2>
-                <p className="mt-2 text-sm font-semibold text-white/45">
+                <h2 className="mt-1 text-2xl font-semibold text-gray-950 dark:text-white">Stock muerto</h2>
+                <p className="mt-2 text-sm font-semibold text-gray-500 dark:text-white/45">
                   Productos sin ventas en los ultimos 4 meses o sin venta registrada.
                 </p>
               </div>
-              <div className="overflow-hidden rounded-panel border border-white/10">
+              <div className="overflow-hidden rounded-panel border border-gray-100 bg-white dark:border-white/10 dark:bg-transparent">
                 {(dashboard?.inventario.deadStock ?? []).slice(0, 8).map(item => (
-                  <div key={item.productoId} className="grid gap-3 border-b border-white/10 p-4 last:border-b-0 md:grid-cols-[1fr_auto] md:items-center">
+                  <div key={item.productoId} className="grid gap-3 border-b border-gray-100 p-4 last:border-b-0 dark:border-white/10 md:grid-cols-[1fr_auto] md:items-center">
                     <div>
-                      <strong className="block">{item.nombre}</strong>
-                      <span className="mt-1 block text-sm font-semibold text-white/45">
+                      <strong className="block text-gray-950 dark:text-white">{item.nombre}</strong>
+                      <span className="mt-1 block text-sm font-semibold text-gray-500 dark:text-white/45">
                         {item.diasSinVenta === null ? 'Sin venta historica' : `${item.diasSinVenta} dias sin venta`} / stock {item.stockActual}
                       </span>
                     </div>
-                    <span className="rounded-full bg-white px-3 py-1 text-xs font-bold text-gray-950">
+                    <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-bold text-gray-950 dark:bg-white">
                       {formatBsFromCentavos(item.valorInventarioCentavos)}
                     </span>
                   </div>
                 ))}
                 {!(dashboard?.inventario.deadStock.length) && (
-                  <div className="p-8 text-center text-sm font-semibold text-white/45">Sin stock muerto detectado.</div>
+                  <div className="p-8 text-center text-sm font-semibold text-gray-500 dark:text-white/45">Sin stock muerto detectado.</div>
                 )}
               </div>
             </article>
