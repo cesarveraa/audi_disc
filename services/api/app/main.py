@@ -7,6 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api import access, analytics, audit, customers, dashboard, health, inventory, me, notifications, products, public, reports, sales
 from app.core.config import get_settings
+from app.core.rate_limit import RATE_LIMIT_RESPONSE_HEADERS, FixedWindowRateLimiter, apply_rate_limit, rate_limit_headers
 from app.core.security import firebase_auth_middleware
 from app.repositories.base import InventoryRepository
 from app.repositories.firestore_repository import FirestoreInventoryRepository
@@ -35,9 +36,16 @@ def configure_logging() -> None:
 def create_app(repository: InventoryRepository | None = None) -> FastAPI:
     configure_logging()
     settings = get_settings()
-    app = FastAPI(title="Audi Disc API", version="0.1.0")
+    app = FastAPI(
+        title="Audi Disc API",
+        version="0.1.0",
+        openapi_url=None if settings.is_production else "/openapi.json",
+        docs_url=None if settings.is_production else "/docs",
+        redoc_url=None if settings.is_production else "/redoc",
+    )
     app.state.repository = repository
     app.state.repository_factory = FirestoreInventoryRepository
+    app.state.rate_limiter = FixedWindowRateLimiter()
 
     app.add_middleware(
         CORSMiddleware,
@@ -46,12 +54,17 @@ def create_app(repository: InventoryRepository | None = None) -> FastAPI:
         allow_credentials=True,
         allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
         allow_headers=["Accept", "Authorization", "Content-Type", "If-None-Match"],
-        expose_headers=["Cache-Control", "ETag"],
+        expose_headers=["Cache-Control", "ETag", *RATE_LIMIT_RESPONSE_HEADERS],
     )
 
     @app.middleware("http")
     async def security_headers(request, call_next):
-        response = await call_next(request)
+        response = apply_rate_limit(request, settings)
+        if response is None:
+            response = await call_next(request)
+            rate_limit_decision = getattr(request.state, "rate_limit_decision", None)
+            if rate_limit_decision:
+                response.headers.update(rate_limit_headers(rate_limit_decision))
         response.headers["X-Content-Type-Options"] = "nosniff"
         response.headers["X-Frame-Options"] = "DENY"
         response.headers["Referrer-Policy"] = "no-referrer"

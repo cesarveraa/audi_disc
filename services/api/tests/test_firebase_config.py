@@ -41,3 +41,15 @@ def test_service_account_env_is_required_for_firebase_admin() -> None:
 
     with pytest.raises(RuntimeError, match="Firebase Admin requiere credenciales"):
         service_account_info_from_settings(settings)
+
+
+def test_production_enforces_revoked_token_checks_by_default() -> None:
+    settings = Settings(_env_file=None, env="production")
+
+    assert settings.should_check_revoked_tokens is True
+
+
+def test_development_can_keep_revoked_token_checks_disabled() -> None:
+    settings = Settings(_env_file=None, env="development")
+
+    assert settings.should_check_revoked_tokens is False

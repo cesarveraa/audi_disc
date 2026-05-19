@@ -31,6 +31,20 @@ class Settings(BaseSettings):
     firebase_auth_timeout_seconds: float = 6.0
     firestore_transport: str = "grpc"
     timezone: str = Field(default="America/La_Paz")
+    rate_limit_enabled: bool = True
+    rate_limit_window_seconds: int = Field(default=60, ge=1)
+    rate_limit_public_requests: int = Field(default=120, ge=1)
+    rate_limit_authenticated_requests: int = Field(default=300, ge=1)
+    rate_limit_mutating_requests: int = Field(default=90, ge=1)
+    rate_limit_sensitive_requests: int = Field(default=60, ge=1)
+
+    @property
+    def is_production(self) -> bool:
+        return self.env.strip().casefold() in {"prod", "production"}
+
+    @property
+    def should_check_revoked_tokens(self) -> bool:
+        return self.is_production or self.firebase_check_revoked_tokens
 
     @property
     def cors_origin_list(self) -> list[str]:

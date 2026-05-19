@@ -111,14 +111,15 @@ def _remember_user(token: str, user: AuthenticatedUser) -> None:
 
 def user_from_token(token: str) -> AuthenticatedUser:
     settings = get_settings()
-    if not settings.firebase_check_revoked_tokens:
+    check_revoked_tokens = settings.should_check_revoked_tokens
+    if not check_revoked_tokens:
         cached = _cached_user(token)
         if cached:
             return cached
 
     initialize_firebase()
     try:
-        decoded = auth.verify_id_token(token, check_revoked=settings.firebase_check_revoked_tokens)
+        decoded = auth.verify_id_token(token, check_revoked=check_revoked_tokens)
     except Exception as exc:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -147,7 +148,7 @@ def user_from_token(token: str) -> AuthenticatedUser:
         role_id=decoded.get("roleId") if isinstance(decoded.get("roleId"), str) else role,
         permissions=permissions,
     )
-    if not settings.firebase_check_revoked_tokens:
+    if not check_revoked_tokens:
         _remember_user(token, user)
     return user
 

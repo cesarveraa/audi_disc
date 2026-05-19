@@ -1,8 +1,8 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Query, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 
-from app.core.security import AuthenticatedUser, require_permission
+from app.core.security import AuthenticatedUser, get_current_user, require_permission
 from app.dependencies import get_repository
 from app.domain.schemas import SaleCreate
 from app.repositories.base import InventoryRepository
@@ -37,9 +37,15 @@ def void_sale(
 def sale_receipt(
     sale_id: str,
     repository: Annotated[InventoryRepository, Depends(get_repository)],
-    user: Annotated[AuthenticatedUser, Depends(require_permission("sales"))],
+    user: Annotated[AuthenticatedUser, Depends(get_current_user)],
 ) -> Response:
+    if not user.has_permission("history") and not user.has_permission("sales"):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Permission required: sales or history")
+
     sale = repository.get_sale(sale_id, include_financials=user.can_view_financials)
+    if not user.has_permission("history"):
+        if sale.get("createdBy") != user.uid:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Sale receipt access denied")
     pdf = sale_receipt_pdf(sale)
     return Response(
         content=pdf,
@@ -52,7 +58,7 @@ def sale_receipt(
 @router.get("/ventas/history")
 def sales_history(
     repository: Annotated[InventoryRepository, Depends(get_repository)],
-    user: Annotated[AuthenticatedUser, Depends(require_permission("sales"))],
+    user: Annotated[AuthenticatedUser, Depends(require_permission("history"))],
     dateFrom: Annotated[str, Query(pattern=r"^\d{4}-\d{2}-\d{2}$")],
     dateTo: Annotated[str, Query(pattern=r"^\d{4}-\d{2}-\d{2}$")],
 ) -> dict:

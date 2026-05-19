@@ -8,6 +8,7 @@ import pytest
 from fastapi import HTTPException, status
 from fastapi.testclient import TestClient
 
+from app.core.config import get_settings
 from app.core.security import AuthenticatedUser, get_current_user
 from app.domain.mappers import normalize_product_doc, strip_sale_financials
 from app.domain.schemas import InventoryUpdate, ProductCreate, ProductUpdate, SaleCreate
@@ -594,14 +595,21 @@ class InMemoryInventoryRepository:
         return response
 
 
-def make_client(role: str = "Administrador", repository: InMemoryInventoryRepository | None = None) -> tuple[TestClient, InMemoryInventoryRepository]:
+def make_client(
+    role: str = "Administrador",
+    repository: InMemoryInventoryRepository | None = None,
+    *,
+    permissions: set[str] | None = None,
+    uid: str = "test-user",
+) -> tuple[TestClient, InMemoryInventoryRepository]:
     repo = repository or InMemoryInventoryRepository()
     app = create_app(repo)
     app.dependency_overrides[get_current_user] = lambda: AuthenticatedUser(
-        uid="test-user",
+        uid=uid,
         email="test@audidisc.local",
         display_name="Test User",
         role=role,
+        permissions=frozenset(permissions or ()),
     )
     return TestClient(app), repo
 
@@ -637,6 +645,72 @@ def test_brand_assets_do_not_require_auth() -> None:
     assert favicon_response.headers["content-type"].startswith("image/svg+xml")
     assert logo_response.status_code == 200
     assert logo_response.headers["content-type"].startswith("image/svg+xml")
+
+
+def test_production_disables_api_documentation_routes(monkeypatch: pytest.MonkeyPatch) -> None:
+    get_settings.cache_clear()
+    monkeypatch.setenv("AUDIDISC_ENV", "production")
+    try:
+        client = TestClient(create_app(InMemoryInventoryRepository()))
+
+        assert client.get("/openapi.json").status_code == 404
+        assert client.get("/docs").status_code == 404
+        assert client.get("/redoc").status_code == 404
+    finally:
+        get_settings.cache_clear()
+
+
+def test_rate_limit_headers_are_reported_on_authenticated_routes(monkeypatch: pytest.MonkeyPatch) -> None:
+    get_settings.cache_clear()
+    monkeypatch.setenv("AUDIDISC_RATE_LIMIT_AUTHENTICATED_REQUESTS", "5")
+    try:
+        client, _repo = make_client("Administrador")
+
+        response = client.get("/productos")
+
+        assert response.status_code == 200
+        assert response.headers["X-RateLimit-Limit"] == "5"
+        assert response.headers["X-RateLimit-Remaining"] == "4"
+        assert int(response.headers["X-RateLimit-Reset"]) >= 1
+    finally:
+        get_settings.cache_clear()
+
+
+def test_rate_limit_blocks_after_configured_authenticated_budget(monkeypatch: pytest.MonkeyPatch) -> None:
+    get_settings.cache_clear()
+    monkeypatch.setenv("AUDIDISC_RATE_LIMIT_AUTHENTICATED_REQUESTS", "2")
+    try:
+        client, _repo = make_client("Administrador")
+
+        first = client.get("/productos")
+        second = client.get("/productos")
+        blocked = client.get("/productos")
+
+        assert first.status_code == 200
+        assert second.status_code == 200
+        assert blocked.status_code == 429
+        assert blocked.json() == {"detail": "Rate limit exceeded"}
+        assert blocked.headers["X-RateLimit-Limit"] == "2"
+        assert blocked.headers["X-RateLimit-Remaining"] == "0"
+        assert int(blocked.headers["Retry-After"]) >= 1
+    finally:
+        get_settings.cache_clear()
+
+
+def test_rate_limit_uses_public_budget_for_public_catalog(monkeypatch: pytest.MonkeyPatch) -> None:
+    get_settings.cache_clear()
+    monkeypatch.setenv("AUDIDISC_RATE_LIMIT_PUBLIC_REQUESTS", "1")
+    try:
+        client = TestClient(create_app(InMemoryInventoryRepository()))
+
+        first = client.get("/api/v1/public/products")
+        blocked = client.get("/api/v1/public/products")
+
+        assert first.status_code == 200
+        assert first.headers["X-RateLimit-Limit"] == "1"
+        assert blocked.status_code == 429
+    finally:
+        get_settings.cache_clear()
 
 
 def test_public_catalog_products_do_not_require_auth_and_hide_sensitive_fields() -> None:
@@ -1140,9 +1214,9 @@ def test_analytics_dashboard_is_admin_only_and_returns_bi_metrics() -> None:
     assert any(item["productoId"] == "p3" for item in payload["inventario"]["deadStock"])
 
 
-def test_sales_history_hides_financials_for_seller() -> None:
-    client, _repo = make_client("Vendedor")
-    client.post(
+def test_sales_history_requires_history_permission_and_hides_financials_without_financials() -> None:
+    seller_client, repo = make_client("Vendedor")
+    seller_client.post(
         "/sales",
         json={
             "productos": [{"productoId": "p1", "cantidad": 1, "precioVendidoCentavos": 1500}],
@@ -1151,11 +1225,14 @@ def test_sales_history_hides_financials_for_seller() -> None:
             "metodo": "QR",
         },
     )
+    history_client, _repo = make_client("Auditor", repo, permissions={"history"})
 
-    response = client.get("/sales/history?dateFrom=2026-05-01&dateTo=2026-05-07")
+    seller_response = seller_client.get("/sales/history?dateFrom=2026-05-01&dateTo=2026-05-07")
+    history_response = history_client.get("/sales/history?dateFrom=2026-05-01&dateTo=2026-05-07")
 
-    assert response.status_code == 200
-    payload = response.json()
+    assert seller_response.status_code == 403
+    assert history_response.status_code == 200
+    payload = history_response.json()
     assert "utilidadCentavos" not in payload
     assert "margenPorcentaje" not in payload
     assert "precioCompraCentavos" not in payload["ventas"][0]["productos"][0]
@@ -1209,7 +1286,7 @@ def test_seller_cannot_void_sale() -> None:
 
 
 def test_sale_receipt_pdf_is_generated_for_authenticated_seller() -> None:
-    client, _repo = make_client("Vendedor")
+    client, _repo = make_client("Vendedor", uid="cashier-a")
     sale_response = client.post(
         "/sales",
         json={
@@ -1225,6 +1302,28 @@ def test_sale_receipt_pdf_is_generated_for_authenticated_seller() -> None:
     assert response.status_code == 200
     assert response.headers["content-type"] == "application/pdf"
     assert response.content.startswith(b"%PDF")
+
+
+def test_seller_cannot_download_another_sellers_sale_receipt() -> None:
+    owner_client, repo = make_client("Vendedor", uid="cashier-a")
+    sale_response = owner_client.post(
+        "/sales",
+        json={
+            "productos": [{"productoId": "p1", "cantidad": 1, "precioVendidoCentavos": 1500}],
+            "totalCentavos": 1500,
+            "recibidoCentavos": 1500,
+            "metodo": "Efectivo",
+        },
+    )
+    other_seller_client, _repo = make_client("Vendedor", repo, uid="cashier-b")
+    history_client, _repo = make_client("Auditor", repo, permissions={"history"}, uid="auditor")
+
+    blocked_response = other_seller_client.get(f"/sales/{sale_response.json()['id']}/receipt.pdf")
+    allowed_response = history_client.get(f"/sales/{sale_response.json()['id']}/receipt.pdf")
+
+    assert blocked_response.status_code == 403
+    assert allowed_response.status_code == 200
+    assert allowed_response.content.startswith(b"%PDF")
 
 
 def test_admin_cash_close_pdf_is_generated_and_seller_is_blocked() -> None:

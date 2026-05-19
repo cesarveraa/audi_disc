@@ -1,4 +1,3 @@
-import jsPDF from 'jspdf';
 import type { Sale } from '@audidisc/shared';
 import { formatBsFromCentavos } from '@audidisc/shared';
 
@@ -22,6 +21,7 @@ async function imageToDataUrl(src: string): Promise<string | null> {
 }
 
 export async function generateSaleReceiptPdf(sale: Sale) {
+  const { default: jsPDF } = await import('jspdf');
   const doc = new jsPDF({ unit: 'mm', format: [80, 180] });
   const logo = await imageToDataUrl('/audidisc.jpg');
   const margin = 7;
