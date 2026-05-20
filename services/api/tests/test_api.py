@@ -2,11 +2,13 @@ from __future__ import annotations
 
 from copy import deepcopy
 from datetime import datetime, timedelta
+from io import BytesIO
 from threading import Lock
 
 import pytest
 from fastapi import HTTPException, status
 from fastapi.testclient import TestClient
+from openpyxl import load_workbook
 
 from app.core.config import get_settings
 from app.core.security import AuthenticatedUser, get_current_user
@@ -1380,3 +1382,76 @@ def test_admin_exports_products_and_sales_to_pdf_and_xlsx() -> None:
     assert sales_pdf.status_code == 200
     assert sales_pdf.content.startswith(b"%PDF")
     assert seller_products_xlsx.status_code == 403
+
+
+def test_product_exports_apply_product_stock_and_date_filters() -> None:
+    admin_client, repo = make_client("Administrador")
+    repo.products["p2"]["cantidad"] = 0
+    repo.products["p2"]["updatedAt"] = "2026-05-06T08:00:00"
+
+    response = admin_client.get(
+        "/reports/products.xlsx?q=Cable&categoria=Accesorios&stock=critical&dateFrom=2026-05-01&dateTo=2026-05-07"
+    )
+    pdf_response = admin_client.get(
+        "/reports/products.pdf?q=Cable&categoria=Accesorios&stock=critical&dateFrom=2026-05-01&dateTo=2026-05-07"
+    )
+
+    assert response.status_code == 200
+    workbook = load_workbook(BytesIO(response.content))
+    rows = list(workbook["Productos"].iter_rows(values_only=True))
+    assert len(rows) == 2
+    assert rows[1][1] == "Cable USB"
+    assert rows[1][4] == "Accesorios"
+    assert pdf_response.status_code == 200
+    assert pdf_response.content.startswith(b"%PDF")
+
+
+def test_sales_reports_apply_product_and_method_filters() -> None:
+    admin_client, repo = make_client("Administrador")
+    repo.products["p2"]["cantidad"] = 5
+    admin_client.post(
+        "/sales",
+        json={
+            "productos": [
+                {"productoId": "p1", "cantidad": 1, "precioVendidoCentavos": 1500},
+                {"productoId": "p2", "cantidad": 1, "precioVendidoCentavos": 700},
+            ],
+            "totalCentavos": 2200,
+            "recibidoCentavos": 2200,
+            "metodo": "QR",
+        },
+    )
+
+    history_response = admin_client.get(
+        "/reports/sales-history?dateFrom=2026-05-01&dateTo=2026-05-07&producto=Cable&metodo=QR"
+    )
+    xlsx_response = admin_client.get(
+        "/reports/sales.xlsx?dateFrom=2026-05-01&dateTo=2026-05-07&producto=Cable&metodo=QR"
+    )
+    pdf_response = admin_client.get(
+        "/reports/sales.pdf?dateFrom=2026-05-01&dateTo=2026-05-07&producto=Cable&metodo=QR"
+    )
+
+    assert history_response.status_code == 200
+    payload = history_response.json()
+    assert payload["cantidadVentas"] == 1
+    assert payload["totalCentavos"] == 700
+    assert payload["ventas"][0]["productos"] == [
+        {
+            "productoId": "p2",
+            "nombre": "Cable USB",
+            "marca": "Anker",
+            "sku": "CAB-USB-010",
+            "categoria": "Accesorios",
+            "cantidad": 1,
+            "precioVentaCentavos": 700,
+            "precioVendidoCentavos": 700,
+            "subtotalCentavos": 700,
+            "precioCompraCentavos": 300,
+            "utilidadCentavos": 400,
+        }
+    ]
+    workbook = load_workbook(BytesIO(xlsx_response.content))
+    assert workbook["Resumen"]["B5"].value == 7
+    assert pdf_response.status_code == 200
+    assert pdf_response.content.startswith(b"%PDF")
