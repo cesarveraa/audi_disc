@@ -1,4 +1,4 @@
-import { createContext, ReactNode, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { createContext, ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import {
   browserLocalPersistence,
   getAuth,
@@ -10,6 +10,7 @@ import {
 import type { CurrentUser, PermissionKey } from '@audidisc/shared';
 import { hasPermission, isAdminRole, permissionsForRole } from '@audidisc/shared';
 
+import { AUTH_INVALID_EVENT, type AuthInvalidEvent } from '@app/authEvents';
 import { getFirebaseApp } from '@infra/firebase/firebaseApp';
 
 type AuthContextValue = {
@@ -62,6 +63,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [idToken, setIdToken] = useState<string | null>(null);
   const [isLoading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const pendingSessionErrorRef = useRef<string | null>(null);
   const firebaseApp = useMemo(() => getFirebaseApp(), []);
   const authEnabled = Boolean(firebaseApp);
 
@@ -85,11 +87,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const unsubscribe = onIdTokenChanged(auth, currentUser => {
       void (async () => {
         setLoading(true);
-        setError(null);
+        const pendingSessionError = pendingSessionErrorRef.current;
+        if (!pendingSessionError) {
+          setError(null);
+        }
         clearSessionTimer();
         if (!currentUser) {
+          pendingSessionErrorRef.current = null;
           setUser(null);
           setIdToken(null);
+          setError(pendingSessionError);
           setLoading(false);
           return;
         }
@@ -124,6 +131,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           permissions,
         });
         setIdToken(token);
+        pendingSessionErrorRef.current = null;
+        setError(null);
         sessionTimer = setTimeout(() => {
           setError('Sesion expirada por seguridad. Vuelve a iniciar sesion.');
           void signOut(auth);
@@ -141,6 +150,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       clearSessionTimer();
       unsubscribe();
     };
+  }, [firebaseApp]);
+
+  useEffect(() => {
+    if (!firebaseApp) {
+      return undefined;
+    }
+
+    const auth = getAuth(firebaseApp);
+    const handleInvalidSession = (event: Event) => {
+      const detail = (event as AuthInvalidEvent).detail;
+      const serverMessage = typeof detail?.message === 'string' ? detail.message : '';
+      const nextMessage = serverMessage.includes('revoked')
+        ? 'Sesion expirada o permisos actualizados. Vuelve a iniciar sesion.'
+        : 'Sesion invalida. Vuelve a iniciar sesion.';
+      pendingSessionErrorRef.current = nextMessage;
+      setError(nextMessage);
+      setUser(null);
+      setIdToken(null);
+      void signOut(auth);
+    };
+
+    window.addEventListener(AUTH_INVALID_EVENT, handleInvalidSession);
+    return () => window.removeEventListener(AUTH_INVALID_EVENT, handleInvalidSession);
   }, [firebaseApp]);
 
   const login = useCallback(

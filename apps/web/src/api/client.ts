@@ -1,5 +1,6 @@
 import { getAuth } from 'firebase/auth';
 
+import { dispatchAuthInvalid } from '@app/authEvents';
 import { API_URL } from '../config/api';
 import { getFirebaseApp } from '@infra/firebase/firebaseApp';
 
@@ -14,14 +15,13 @@ type ApiFetchOptions = Omit<RequestInit, 'body' | 'headers'> & {
   headers?: HeadersInit;
 };
 
-async function resolveToken(explicitToken: string | null | undefined) {
-  if (explicitToken) {
-    return explicitToken;
-  }
-
+async function resolveToken(explicitToken: string | null | undefined, forceRefresh = false) {
   const app = getFirebaseApp();
   const currentUser = app ? getAuth(app).currentUser : null;
-  return currentUser ? currentUser.getIdToken() : null;
+  if (currentUser) {
+    return currentUser.getIdToken(forceRefresh);
+  }
+  return explicitToken ?? null;
 }
 
 function apiUrl(path: string) {
@@ -44,17 +44,33 @@ async function readServerMessage(response: Response) {
   return text || `HTTP ${response.status}`;
 }
 
-export async function apiFetch(path: string, options: ApiFetchOptions = {}) {
-  const { idToken, json, headers, ...requestOptions } = options;
-  const token = await resolveToken(idToken);
-  if (!token) {
-    throw new Error('Sesion Firebase requerida');
-  }
-
+async function sendApiRequest(
+  url: string,
+  options: ApiFetchOptions,
+  token: string,
+  controller: AbortController,
+) {
+  const { json, headers, ...requestOptions } = options;
   const requestHeaders = new Headers(headers);
   requestHeaders.set('Authorization', `Bearer ${token}`);
   if (json !== undefined && !requestHeaders.has('Content-Type')) {
     requestHeaders.set('Content-Type', 'application/json');
+  }
+
+  return fetch(url, {
+    ...requestOptions,
+    cache: requestOptions.cache ?? 'no-store',
+    headers: requestHeaders,
+    signal: requestOptions.signal ?? controller.signal,
+    body: json === undefined ? undefined : JSON.stringify(json),
+  });
+}
+
+export async function apiFetch(path: string, options: ApiFetchOptions = {}) {
+  const { idToken, ...requestOptions } = options;
+  let token = await resolveToken(idToken);
+  if (!token) {
+    throw new Error('Sesion Firebase requerida');
   }
 
   const url = apiUrl(path);
@@ -62,13 +78,14 @@ export async function apiFetch(path: string, options: ApiFetchOptions = {}) {
   const timeoutId = globalThis.setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
   let response: Response;
   try {
-    response = await fetch(url, {
-      ...requestOptions,
-      cache: requestOptions.cache ?? 'no-store',
-      headers: requestHeaders,
-      signal: requestOptions.signal ?? controller.signal,
-      body: json === undefined ? undefined : JSON.stringify(json),
-    });
+    response = await sendApiRequest(url, requestOptions, token, controller);
+    if (response.status === 401) {
+      const refreshedToken = await resolveToken(idToken, true).catch(() => null);
+      if (refreshedToken) {
+        token = refreshedToken;
+        response = await sendApiRequest(url, requestOptions, token, controller);
+      }
+    }
   } catch (error) {
     if (error instanceof Error) {
       console.error('[AudiDisc Network]', requestOptions.method ?? 'GET', url, error.message);
@@ -84,6 +101,9 @@ export async function apiFetch(path: string, options: ApiFetchOptions = {}) {
   if (!response.ok) {
     const serverMessage = await readServerMessage(response.clone());
     console.error('[AudiDisc API]', requestOptions.method ?? 'GET', url, response.status, serverMessage);
+    if (response.status === 401) {
+      dispatchAuthInvalid(serverMessage);
+    }
     throw new Error(serverMessage);
   }
 
