@@ -13,7 +13,20 @@ type ApiFetchOptions = Omit<RequestInit, 'body' | 'headers'> & {
   idToken?: string | null;
   json?: unknown;
   headers?: HeadersInit;
+  silentStatuses?: number[];
 };
+
+const SENSITIVE_KEYS = ['password', 'token', 'authorization', 'secret', 'apiKey', 'api_key', 'privateKey', 'private_key'];
+
+export class ApiError extends Error {
+  constructor(
+    message: string,
+    readonly status: number,
+  ) {
+    super(message);
+    this.name = 'ApiError';
+  }
+}
 
 async function resolveToken(explicitToken: string | null | undefined, forceRefresh = false) {
   const app = getFirebaseApp();
@@ -28,15 +41,80 @@ function apiUrl(path: string) {
   return `${API_BASE_URL}${path.startsWith('/') ? path : `/${path}`}`;
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function isSensitiveKey(key: string) {
+  return SENSITIVE_KEYS.some(sensitive => key.toLowerCase().includes(sensitive.toLowerCase()));
+}
+
+function redactSensitivePayload(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    return value.map(redactSensitivePayload);
+  }
+  if (!isRecord(value)) {
+    return value;
+  }
+
+  return Object.fromEntries(
+    Object.entries(value)
+      .filter(([key]) => key !== 'input')
+      .map(([key, child]) => [
+        key,
+        isSensitiveKey(key) ? '[redacted]' : redactSensitivePayload(child),
+      ]),
+  );
+}
+
+function formatValidationDetail(detail: unknown) {
+  if (!Array.isArray(detail)) {
+    return null;
+  }
+
+  const messages = detail
+    .filter(isRecord)
+    .slice(0, 3)
+    .map(error => {
+      const rawLocation = Array.isArray(error.loc) ? error.loc.map(String) : [];
+      const field = rawLocation.filter(part => !['body', 'query', 'path'].includes(part)).join('.') || 'campo';
+      const message = typeof error.msg === 'string' ? error.msg : 'valor invalido';
+      return `${field}: ${message}`;
+    });
+
+  return messages.length ? `Datos invalidos (${messages.join('; ')})` : 'Datos invalidos';
+}
+
+function safeStringify(value: unknown) {
+  return JSON.stringify(redactSensitivePayload(value));
+}
+
+function safeUrlForLog(rawUrl: string) {
+  try {
+    const url = new URL(rawUrl);
+    for (const key of Array.from(url.searchParams.keys())) {
+      if (isSensitiveKey(key)) {
+        url.searchParams.set(key, '[redacted]');
+      }
+    }
+    return url.toString();
+  } catch {
+    return rawUrl;
+  }
+}
+
 async function readServerMessage(response: Response) {
   const contentType = response.headers.get('content-type') ?? '';
   if (contentType.includes('application/json')) {
     const payload = await response.json().catch(() => null);
     if (payload?.detail) {
-      return typeof payload.detail === 'string' ? payload.detail : JSON.stringify(payload.detail);
+      if (typeof payload.detail === 'string') {
+        return payload.detail;
+      }
+      return formatValidationDetail(payload.detail) ?? safeStringify(payload.detail);
     }
     if (payload?.message) {
-      return String(payload.message);
+      return typeof payload.message === 'string' ? payload.message : safeStringify(payload.message);
     }
   }
 
@@ -67,7 +145,7 @@ async function sendApiRequest(
 }
 
 export async function apiFetch(path: string, options: ApiFetchOptions = {}) {
-  const { idToken, ...requestOptions } = options;
+  const { idToken, silentStatuses, ...requestOptions } = options;
   let token = await resolveToken(idToken);
   if (!token) {
     throw new Error('Sesion Firebase requerida');
@@ -88,7 +166,7 @@ export async function apiFetch(path: string, options: ApiFetchOptions = {}) {
     }
   } catch (error) {
     if (error instanceof Error) {
-      console.error('[AudiDisc Network]', requestOptions.method ?? 'GET', url, error.message);
+      console.error('[AudiDisc Network]', requestOptions.method ?? 'GET', safeUrlForLog(url), error.message);
     }
     if (error instanceof Error && error.name === 'AbortError') {
       throw new Error('El servidor esta tardando demasiado en responder. Intenta actualizar en unos segundos.');
@@ -100,11 +178,13 @@ export async function apiFetch(path: string, options: ApiFetchOptions = {}) {
 
   if (!response.ok) {
     const serverMessage = await readServerMessage(response.clone());
-    console.error('[AudiDisc API]', requestOptions.method ?? 'GET', url, response.status, serverMessage);
+    if (!silentStatuses?.includes(response.status)) {
+      console.error('[AudiDisc API]', requestOptions.method ?? 'GET', safeUrlForLog(url), response.status, serverMessage);
+    }
     if (response.status === 401) {
       dispatchAuthInvalid(serverMessage);
     }
-    throw new Error(serverMessage);
+    throw new ApiError(serverMessage, response.status);
   }
 
   return response;

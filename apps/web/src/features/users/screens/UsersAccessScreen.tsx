@@ -181,7 +181,11 @@ export default function UsersAccessScreen() {
 
   async function handleCreateUser() {
     if (!userDraft.email.trim() || !userDraft.password.trim()) {
-      setError('Completa email y password temporal.');
+      setError('Completa email y contrasena temporal.');
+      return;
+    }
+    if (userDraft.password.length < 8) {
+      setError('La contrasena temporal debe tener al menos 8 caracteres.');
       return;
     }
     setSaving('new-user');
@@ -532,7 +536,8 @@ export default function UsersAccessScreen() {
                 type="password"
                 value={userDraft.password}
                 onChange={event => setUserDraft(current => ({ ...current, password: event.target.value }))}
-                placeholder="Password temporal"
+                placeholder="Contrasena temporal"
+                autoComplete="new-password"
                 className="h-12 rounded-2xl border border-gray-200 bg-white px-4 text-sm font-semibold outline-none transition focus:border-audi-red dark:border-white/10 dark:bg-black/20"
               />
               <select

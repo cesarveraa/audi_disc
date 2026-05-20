@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from copy import deepcopy
 from datetime import datetime, timedelta
 from io import BytesIO
@@ -660,6 +661,26 @@ def test_production_disables_api_documentation_routes(monkeypatch: pytest.Monkey
         assert client.get("/redoc").status_code == 404
     finally:
         get_settings.cache_clear()
+
+
+def test_validation_errors_do_not_echo_sensitive_inputs() -> None:
+    client, _repo = make_client("Administrador")
+
+    response = client.post(
+        "/api/v1/access/users",
+        json={
+            "email": "nuevo@audidisc.local",
+            "password": "1234",
+            "roleId": "vendedor",
+        },
+    )
+
+    body = response.json()
+    dumped_body = json.dumps(body)
+    assert response.status_code == 422
+    assert "1234" not in dumped_body
+    assert '"input"' not in dumped_body
+    assert body["detail"][0]["loc"] == ["body", "password"]
 
 
 def test_rate_limit_headers_are_reported_on_authenticated_routes(monkeypatch: pytest.MonkeyPatch) -> None:

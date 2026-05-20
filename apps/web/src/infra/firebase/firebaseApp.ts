@@ -37,7 +37,9 @@ export function initializeFirebaseApp(): FirebaseApp | null {
   }
 
   firebaseApp = getApps().length ? getApp() : initializeApp(firebaseConfig);
-  console.log("🔥 Firebase inicializado correctamente");
+  if (import.meta.env.DEV) {
+    console.info('[AudiDisc Firebase] Inicializado correctamente');
+  }
   return firebaseApp;
 }
 

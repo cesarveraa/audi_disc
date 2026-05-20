@@ -101,4 +101,55 @@ describe('apiFetch auth token handling', () => {
     expect(invalidSessionListener).toHaveBeenCalledTimes(1);
     window.removeEventListener('audidisc:auth-invalid', invalidSessionListener);
   });
+
+  it('redacts validation inputs from thrown errors and API logs', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse(422, {
+      detail: [
+        {
+          type: 'string_too_short',
+          loc: ['body', 'password'],
+          msg: 'String should have at least 8 characters',
+          input: '1234',
+          ctx: { min_length: 8 },
+        },
+      ],
+    }));
+    vi.stubGlobal('fetch', fetchMock);
+    firebaseMocks.currentUser.getIdToken.mockResolvedValue('fresh-sdk-token');
+    const { apiFetch } = await loadClient();
+
+    try {
+      await expect(apiFetch('/access/users', {
+        method: 'POST',
+        json: { email: 'nuevo@audidisc.local', password: '1234', roleId: 'vendedor' },
+      })).rejects.toMatchObject({
+        status: 422,
+        message: 'Datos invalidos (password: String should have at least 8 characters)',
+      });
+
+      expect(JSON.stringify(consoleError.mock.calls)).not.toContain('1234');
+      expect(JSON.stringify(consoleError.mock.calls)).not.toContain('"input"');
+    } finally {
+      consoleError.mockRestore();
+    }
+  });
+
+  it('can silence expected HTTP status logs while still throwing an API error', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse(404, { detail: 'Not Found' }));
+    vi.stubGlobal('fetch', fetchMock);
+    firebaseMocks.currentUser.getIdToken.mockResolvedValue('fresh-sdk-token');
+    const { apiFetch } = await loadClient();
+
+    try {
+      await expect(apiFetch('/reports/sales-history', { silentStatuses: [404] })).rejects.toMatchObject({
+        status: 404,
+        message: 'Not Found',
+      });
+      expect(consoleError).not.toHaveBeenCalled();
+    } finally {
+      consoleError.mockRestore();
+    }
+  });
 });

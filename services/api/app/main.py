@@ -3,7 +3,10 @@ import sys
 import time
 
 from fastapi import FastAPI, Response
+from fastapi.encoders import jsonable_encoder
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from app.api import access, analytics, audit, customers, dashboard, health, inventory, me, notifications, products, public, reports, sales
 from app.core.config import get_settings
@@ -21,6 +24,18 @@ BRAND_MARK_SVG = """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96">
 <circle cx="70" cy="18" r="8" fill="#E4002B"/>
 <path d="M22 72 74 24" stroke="#fff" stroke-width="4" opacity=".62"/>
 </svg>"""
+SENSITIVE_VALIDATION_FIELDS = {"password", "token", "authorization", "secret", "api_key", "apikey", "private_key"}
+
+
+def public_validation_errors(errors: list[dict]) -> list[dict]:
+    public_errors = []
+    for error in errors:
+        public_error = {key: value for key, value in error.items() if key != "input"}
+        location = [str(part).casefold() for part in public_error.get("loc", [])]
+        if any(part in SENSITIVE_VALIDATION_FIELDS for part in location):
+            public_error.pop("ctx", None)
+        public_errors.append(public_error)
+    return public_errors
 
 
 def configure_logging() -> None:
@@ -46,6 +61,14 @@ def create_app(repository: InventoryRepository | None = None) -> FastAPI:
     app.state.repository = repository
     app.state.repository_factory = FirestoreInventoryRepository
     app.state.rate_limiter = FixedWindowRateLimiter()
+
+    @app.exception_handler(RequestValidationError)
+    async def validation_exception_handler(request, exc):
+        return JSONResponse(
+            status_code=422,
+            content=jsonable_encoder({"detail": public_validation_errors(exc.errors())}),
+            headers={"X-Error-Message": "Validation error"},
+        )
 
     app.add_middleware(
         CORSMiddleware,

@@ -453,46 +453,6 @@ export default function ReportsDashboardScreen() {
             </article>
           </section>
 
-          <section className="mt-5 rounded-panel border border-white/70 bg-white/80 p-5 shadow-card backdrop-blur-xl dark:border-white/10 dark:bg-white/[0.06]">
-            <div className="mb-5 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-audi-red">Historial</p>
-                <h2 className="mt-1 text-2xl font-semibold text-gray-950 dark:text-white">Ventas del rango</h2>
-              </div>
-              <span className="text-sm font-semibold text-gray-500 dark:text-white/55">
-                {salesFilters.dateFrom} / {salesFilters.dateTo}
-              </span>
-            </div>
-
-            <div className="overflow-hidden rounded-panel border border-gray-100 bg-white dark:border-white/10 dark:bg-white/[0.04]">
-              {(history?.ventas ?? []).map(sale => (
-                <div key={sale.id} className="grid gap-3 border-b border-gray-100 p-4 last:border-b-0 dark:border-white/10 lg:grid-cols-[1fr_auto] lg:items-center">
-                  <div>
-                    <strong className="block text-gray-950 dark:text-white">{sale.id}</strong>
-                    <span className="text-sm font-medium text-gray-500 dark:text-white/55">{sale.fechaLocal} / {sale.horaLocal} / {sale.metodo}</span>
-                    <div className="mt-2 text-sm text-gray-600 dark:text-white/60">
-                      {sale.productos.map(item => (
-                        <span key={`${sale.id}-${item.productoId}`} className="mr-3 inline-block">
-                          {item.nombre} x{item.cantidad}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                  <div className="text-left lg:text-right">
-                    <strong className="block text-lg text-gray-950 dark:text-white">{formatBsFromCentavos(sale.totalCentavos)}</strong>
-                    {canViewFinancials && (
-                      <span className="text-sm font-semibold text-audi-red">
-                        Utilidad {formatBsFromCentavos(sale.productos.reduce((sum, item) => sum + (item.utilidadCentavos ?? 0), 0))}
-                      </span>
-                    )}
-                  </div>
-                </div>
-              ))}
-              {!(history?.ventas.length) && (
-                <div className="p-8 text-center text-sm font-medium text-gray-500">Sin ventas en el rango seleccionado.</div>
-              )}
-            </div>
-          </section>
         </section>
       </div>
     </main>

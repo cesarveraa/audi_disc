@@ -1,6 +1,6 @@
 import type { ReportsDashboard, Sale, SalesHistory, UserRole } from '@audidisc/shared';
 
-import { apiBlob, apiJson } from '../../../api/client';
+import { ApiError, apiBlob, apiJson } from '../../../api/client';
 
 export type ProductReportFilters = {
   q?: string;
@@ -67,6 +67,85 @@ function filenamePart(value: string | undefined, fallback: string) {
   return normalized || fallback;
 }
 
+function normalizeFilter(value: string | undefined | null) {
+  return (value ?? '').toLowerCase().trim();
+}
+
+function normalized(value: string | number | null | undefined) {
+  return String(value ?? '').toLowerCase().trim();
+}
+
+function saleItemMatches(item: Sale['productos'][number], productQuery: string) {
+  if (!productQuery) {
+    return true;
+  }
+  const haystack = [
+    item.productoId,
+    item.nombre,
+    item.marca,
+    item.sku,
+    item.categoria,
+  ].map(normalized).join(' ');
+  return haystack.includes(productQuery);
+}
+
+function recalculateSalesHistory(history: SalesHistory, ventas: Sale[]): SalesHistory {
+  const totalCentavos = ventas.reduce((total, sale) => total + sale.totalCentavos, 0);
+  const utilidadCentavos = ventas.reduce(
+    (total, sale) => total + sale.productos.reduce((subtotal, item) => subtotal + (item.utilidadCentavos ?? 0), 0),
+    0,
+  );
+
+  return {
+    ...history,
+    ventas,
+    cantidadVentas: ventas.length,
+    totalCentavos,
+    ...(history.utilidadCentavos === undefined
+      ? {}
+      : {
+          utilidadCentavos,
+          margenPorcentaje: totalCentavos ? Number(((utilidadCentavos / totalCentavos) * 100).toFixed(2)) : 0,
+        }),
+  };
+}
+
+function filterSalesHistoryLocally(history: SalesHistory, filters: SalesReportFilters): SalesHistory {
+  const productQuery = normalizeFilter(filters.producto).trim();
+  const method = normalizeFilter(filters.metodo).trim();
+  const shouldFilterItems = Boolean(productQuery);
+
+  const ventas = history.ventas.flatMap(sale => {
+    if (method && normalized(sale.metodo) !== method) {
+      return [];
+    }
+    if (!shouldFilterItems) {
+      return [sale];
+    }
+
+    const productos = sale.productos.filter(item => saleItemMatches(item, productQuery));
+    if (!productos.length) {
+      return [];
+    }
+    const totalCentavos = productos.reduce((total, item) => total + item.subtotalCentavos, 0);
+    return [{ ...sale, productos, totalCentavos }];
+  });
+
+  return recalculateSalesHistory(history, ventas);
+}
+
+async function fetchLegacySalesHistory(params: {
+  idToken: string | null;
+  filters: SalesReportFilters;
+}): Promise<SalesHistory> {
+  const query = new URLSearchParams({
+    dateFrom: params.filters.dateFrom,
+    dateTo: params.filters.dateTo,
+  });
+  const history = await apiJson<SalesHistory>(`/sales/history?${query.toString()}`, { idToken: params.idToken });
+  return filterSalesHistoryLocally(history, params.filters);
+}
+
 export async function fetchReportsDashboard(params: {
   idToken: string | null;
   role: UserRole;
@@ -85,7 +164,17 @@ export async function fetchSalesHistory(params: {
   void params.role;
   if (params.filters) {
     const query = salesReportQuery(params.filters);
-    return apiJson<SalesHistory>(`/reports/sales-history?${query.toString()}`, { idToken: params.idToken });
+    try {
+      return await apiJson<SalesHistory>(`/reports/sales-history?${query.toString()}`, {
+        idToken: params.idToken,
+        silentStatuses: [404],
+      });
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 404) {
+        return fetchLegacySalesHistory({ idToken: params.idToken, filters: params.filters });
+      }
+      throw error;
+    }
   }
   const query = new URLSearchParams({
     dateFrom: params.dateFrom ?? '',

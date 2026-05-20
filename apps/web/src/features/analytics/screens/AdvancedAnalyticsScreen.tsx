@@ -255,7 +255,7 @@ export default function AdvancedAnalyticsScreen() {
               {paretoChart.length ? (
                 <div className="overflow-x-auto pb-2">
                   <div className="h-[390px] min-w-[720px]">
-                    <ResponsiveContainer width="100%" height="100%">
+                    <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0} debounce={80}>
                       <ComposedChart data={paretoChart} margin={{ top: 12, right: 8, bottom: 8, left: 0 }}>
                         <CartesianGrid stroke={gridColor} vertical={false} />
                         <XAxis dataKey="shortName" tick={{ fill: axisColor, fontSize: 12 }} axisLine={false} tickLine={false} />
@@ -284,7 +284,7 @@ export default function AdvancedAnalyticsScreen() {
               </div>
               {paretoClassData.length ? (
                 <div className="h-[230px]">
-                  <ResponsiveContainer width="100%" height="100%">
+                  <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0} debounce={80}>
                     <PieChart>
                       <Pie data={paretoClassData} dataKey="value" nameKey="name" innerRadius={58} outerRadius={88} paddingAngle={5}>
                         {paretoClassData.map((entry, index) => (
@@ -325,7 +325,7 @@ export default function AdvancedAnalyticsScreen() {
               {trendChart.length ? (
                 <div className="overflow-x-auto pb-2">
                   <div className="h-[340px] min-w-[680px]">
-                    <ResponsiveContainer width="100%" height="100%">
+                    <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0} debounce={80}>
                       <ComposedChart data={trendChart} margin={{ top: 12, right: 8, bottom: 8, left: 0 }}>
                         <CartesianGrid stroke={gridColor} vertical={false} />
                         <XAxis dataKey="mes" tick={{ fill: axisColor, fontSize: 12 }} axisLine={false} tickLine={false} />
