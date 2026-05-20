@@ -33,6 +33,12 @@ from app.domain.schemas import (
     PushTokenRegister,
     SaleCreate,
 )
+from app.services.advanced_bi import (
+    build_inventory_health,
+    build_pareto_margin,
+    build_price_waterfall,
+    build_sales_heatmap,
+)
 
 
 logger = logging.getLogger("audidisc.audit")
@@ -1019,6 +1025,39 @@ class FirestoreInventoryRepository:
             if data.get("fechaLocal"):
                 sales.append((snapshot.id, data))
         return sales
+
+    def _all_active_products(self) -> list[tuple[str, dict]]:
+        return [
+            (product_id, product)
+            for product_id, product in _rest_collection_documents("productos", page_size=PRODUCT_LIST_LIMIT, context="active products")
+            if bool(product.get("estado", True))
+        ]
+
+    def inventory_health(self) -> dict:
+        return build_inventory_health(
+            self._all_active_products(),
+            self._all_active_sales(),
+            today=_local_now().date(),
+        )
+
+    def pareto_margin(self) -> dict:
+        return build_pareto_margin(
+            self._all_active_products(),
+            self._all_active_sales(),
+            today=_local_now().date(),
+        )
+
+    def price_waterfall(self) -> dict:
+        return build_price_waterfall(
+            self._all_active_sales(),
+            today=_local_now().date(),
+        )
+
+    def sales_heatmap(self) -> dict:
+        return build_sales_heatmap(
+            self._all_active_sales(),
+            today=_local_now().date(),
+        )
 
     def _analytics_snapshot(self, include_financials: bool) -> dict:
         sales = self._all_active_sales()

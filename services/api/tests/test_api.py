@@ -17,6 +17,12 @@ from app.domain.mappers import normalize_product_doc, strip_sale_financials
 from app.domain.schemas import InventoryUpdate, ProductCreate, ProductUpdate, SaleCreate
 from app.main import create_app
 from app.repositories import firestore_repository as firestore_repo
+from app.services.advanced_bi import (
+    build_inventory_health,
+    build_pareto_margin,
+    build_price_waterfall,
+    build_sales_heatmap,
+)
 
 
 class InMemoryInventoryRepository:
@@ -571,6 +577,49 @@ class InMemoryInventoryRepository:
                 "deadStock": dead_stock,
             },
         }
+
+    def _bi_today(self):
+        return datetime.fromisoformat("2026-05-07").date()
+
+    def _active_product_documents(self) -> list[tuple[str, dict]]:
+        return [
+            (product_id, deepcopy(product))
+            for product_id, product in self.products.items()
+            if product.get("estado", True)
+        ]
+
+    def _active_sale_documents(self) -> list[tuple[str, dict]]:
+        return [
+            (sale_id, deepcopy(sale))
+            for sale_id, sale in self.sales.items()
+            if sale.get("estado", True)
+        ]
+
+    def inventory_health(self) -> dict:
+        return build_inventory_health(
+            self._active_product_documents(),
+            self._active_sale_documents(),
+            today=self._bi_today(),
+        )
+
+    def pareto_margin(self) -> dict:
+        return build_pareto_margin(
+            self._active_product_documents(),
+            self._active_sale_documents(),
+            today=self._bi_today(),
+        )
+
+    def price_waterfall(self) -> dict:
+        return build_price_waterfall(
+            self._active_sale_documents(),
+            today=self._bi_today(),
+        )
+
+    def sales_heatmap(self) -> dict:
+        return build_sales_heatmap(
+            self._active_sale_documents(),
+            today=self._bi_today(),
+        )
 
     def sales_history(self, date_from: str, date_to: str, include_financials: bool) -> dict:
         sales = [
@@ -1235,6 +1284,76 @@ def test_analytics_dashboard_is_admin_only_and_returns_bi_metrics() -> None:
     assert payload["tendencias"]["mesesFuertesAudifonos"][0]["cantidad"] == 2
     assert payload["inventario"]["reorderAlerts"]
     assert any(item["productoId"] == "p3" for item in payload["inventario"]["deadStock"])
+
+
+def test_advanced_bi_endpoints_return_pandas_metrics() -> None:
+    admin_client, repo = make_client("Administrador")
+    repo.products["p3"] = {
+        "nombre": "SSD Dormido",
+        "marca": "Kingston",
+        "sku": "SSD-DORM",
+        "categoria": "Almacenamiento",
+        "cantidad": 6,
+        "stockMinimo": 1,
+        "precioCompraCentavos": 1000,
+        "precioVentaCentavos": 1800,
+        "estado": True,
+        "createdAt": "2026-05-07T08:00:00",
+        "updatedAt": "2026-05-07T08:00:00",
+    }
+    repo.sales["v1"] = {
+        "id": "v1",
+        "productos": [
+            {
+                "productoId": "p1",
+                "nombre": "Audifonos Pro",
+                "marca": "Sony",
+                "sku": "AUD-PRO-001",
+                "categoria": "Audio",
+                "cantidad": 2,
+                "precioVentaCentavos": 1500,
+                "precioVendidoCentavos": 1200,
+                "subtotalCentavos": 2400,
+                "precioCompraCentavos": 1000,
+                "utilidadCentavos": 400,
+            }
+        ],
+        "totalCentavos": 2400,
+        "recibidoCentavos": 2400,
+        "cambioCentavos": 0,
+        "metodo": "Tarjeta",
+        "fechaLocal": "2026-05-07",
+        "horaLocal": "15:30:00",
+        "estado": True,
+        "createdBy": "test-user",
+        "createdAt": "2026-05-07T15:30:00",
+    }
+
+    seller_client, _repo = make_client("Vendedor", repo)
+    blocked = seller_client.get("/api/v1/bi/inventory-health")
+    inventory = admin_client.get("/api/v1/bi/inventory-health")
+    pareto = admin_client.get("/api/v1/bi/pareto-margin")
+    waterfall = admin_client.get("/api/v1/bi/price-waterfall")
+    heatmap = admin_client.get("/api/v1/bi/sales-heatmap")
+
+    assert blocked.status_code == 403
+    assert inventory.status_code == 200
+    assert any(item["productoId"] == "p3" and item["isDeadStockRisk"] for item in inventory.json()["items"])
+    assert pareto.status_code == 200
+    assert pareto.json()["items"][0]["categoria"] == "Audio"
+    assert pareto.json()["items"][0]["margenGananciaPorcentaje"] == pytest.approx(16.67)
+    assert waterfall.status_code == 200
+    assert waterfall.json()["summary"] == {
+        "ingresoPotencialCentavos": 3000,
+        "ingresoRealCentavos": 2400,
+        "descuentosCentavos": 600,
+        "comisionesCentavos": 72,
+        "cogsCentavos": 2000,
+        "utilidadNetaCentavos": 328,
+    }
+    assert heatmap.status_code == 200
+    jueves = next(row for row in heatmap.json()["data"] if row["id"] == "Jueves")
+    assert next(cell for cell in jueves["data"] if cell["x"] == "15:00")["tickets"] == 1
 
 
 def test_sales_history_requires_history_permission_and_hides_financials_without_financials() -> None:
